@@ -1,0 +1,31 @@
+{
+  "name": "delilah-resto",
+  "version": "1.0.0",
+  "description": "Proyecto Delilah Restó para la cursada DWFS de Acámica",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guido732/delilah-resto.git"
+  },
+  "keywords": [
+    "delilah",
+    "resto",
+    "backend",
+    "acamica",
+    "dwfs",
+    "node",
+    "nodejs",
+    "express",
+    "endpoints"
+  ],
+  "author": "Guido Torres",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/guido732/delilah-resto/issues"
+  },
+  "homepage": "https://github.com/guido732/delilah-resto#readme"
+}
