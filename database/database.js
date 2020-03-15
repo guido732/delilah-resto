@@ -1,6 +1,6 @@
 const Sequelize = require("sequelize");
 const sequelize = new Sequelize("mysql://root:@localhost:3306/delilah_resto");
-const mysql2 = require("mysql2");
+// const mysql2 = require("mysql2");
 
 // Async/Await Query Tester
 (async () => {
