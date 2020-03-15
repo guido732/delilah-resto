@@ -257,7 +257,7 @@ paths:
           description: Product added succesfully
           schema:
             $ref: "#/definitions/Product"
-        "405":
+        "400":
           description: Error validating input data
   "/products/:id":
     get:

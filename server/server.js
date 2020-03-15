@@ -20,3 +20,27 @@ server.get("/v1/products", async (req, res) => {
 	});
 	res.status(200).json(products);
 });
+
+server.post("/v1/products", async (req, res) => {
+	const { name, price, imgUrl, description } = req.body;
+	if (name && price && imgUrl && description) {
+		const insert = await sequelize.query(
+			"INSERT INTO products (name, price, imgUrl, description) VALUES (:name, :price, :imgUrl, :description)",
+			{ replacements: { name, price, imgUrl, description } }
+		);
+		console.log("Product Added to database", insert);
+		res.status(200).json(insert);
+	} else {
+		res.status(400).send("Error validating input data");
+	}
+});
+
+server.get("/v1/products/:id", async (req, res) => {
+	const productId = req.headers.id;
+	console.log(productId);
+
+	// const product = await sequelize.query("SELECT * FROM products", {
+	// 	type: sequelize.QueryTypes.SELECT
+	// });
+	// res.status(200).json(products);
+});
