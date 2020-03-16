@@ -45,18 +45,16 @@ server.put("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByID("products", "productID", productId);
 	if (productFound) {
-		// Gets props from body
 		const { name, price, imgUrl, description } = req.body;
 		// Filters "", null or undefined props and puts remaining into new object
 		const filteredProps = filterEmptyProps({ name, price, imgUrl, description });
 		// Creates new object applying only the filtered Props over the previous ones
 		const updatedProduct = { ...productFound, ...filteredProps };
-		const productFoundId = productFound.productID;
 		const update = await sequelize.query(
 			`UPDATE products SET name = :name, price = :price, imgUrl = :imgUrl, description = :description WHERE productID = :id`,
 			{
 				replacements: {
-					id: productFoundId,
+					id: productId,
 					name: updatedProduct.name,
 					price: updatedProduct.price,
 					imgUrl: updatedProduct.imgUrl,
@@ -64,7 +62,7 @@ server.put("/v1/products/:id", async (req, res) => {
 				}
 			}
 		);
-		res.status(200).send(`Product with id ${productFoundId} modified correctly`);
+		res.status(200).send(`Product with id ${productId} modified correctly`);
 	} else {
 		res.status(404).send("No product matches the ID provided");
 	}
