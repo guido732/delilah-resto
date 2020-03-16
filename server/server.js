@@ -36,11 +36,31 @@ server.post("/v1/products", async (req, res) => {
 });
 
 server.get("/v1/products/:id", async (req, res) => {
-	const productId = req.headers.id;
-	console.log(productId);
+	const productId = req.params.id;
+	const productFound = await getByID("products", "productID", productId);
+	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
+});
 
-	// const product = await sequelize.query("SELECT * FROM products", {
-	// 	type: sequelize.QueryTypes.SELECT
-	// });
-	// res.status(200).json(products);
+server.put("/v1/products/:id", async (req, res) => {
+	const productId = req.params.id;
+	const productFound = await getByID("products", "productID", productId);
+	if (productFound) {
+		console.log(productFound);
+	}
+	res.status(200).json(productFound);
+});
+
+async function getByID(table, tableParam, inputParam) {
+	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
+		replacements: { replacementParam: inputParam },
+		type: sequelize.QueryTypes.SELECT
+	});
+	return !!searchResult.length ? searchResult : false;
+}
+
+// Generic error detection
+server.use((err, req, res, next) => {
+	if (!err) return next();
+	console.log("An error has occurred", err);
+	res.status(500).send("Error");
 });
