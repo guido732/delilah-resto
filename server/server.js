@@ -68,6 +68,19 @@ server.put("/v1/products/:id", async (req, res) => {
 	}
 });
 
+server.delete("/v1/products/:id", async (req, res) => {
+	const productId = req.params.id;
+	const productFound = await getByID("products", "productID", productId);
+	if (productFound) {
+		const deleteRow = await sequelize.query("DELETE FROM products WHERE productID = :id", {
+			replacements: { id: productId }
+		});
+		res.status(200).send(`Product with id ${productId} was deleted correctly`);
+	} else {
+		res.status(404).send("No product matches the ID provided");
+	}
+});
+
 function filterEmptyProps(inputObject) {
 	Object.keys(inputObject).forEach(key => !inputObject[key] && delete inputObject[key]);
 	return inputObject;
