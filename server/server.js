@@ -45,17 +45,42 @@ server.put("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByID("products", "productID", productId);
 	if (productFound) {
-		console.log(productFound);
+		// Gets props from body
+		const { name, price, imgUrl, description } = req.body;
+		// Filters "", null or undefined props and puts remaining into new object
+		const filteredProps = filterEmptyProps({ name, price, imgUrl, description });
+		// Creates new object applying only the filtered Props over the previous ones
+		const updatedProduct = { ...productFound, ...filteredProps };
+		const productFoundId = productFound.productID;
+		const update = await sequelize.query(
+			`UPDATE products SET name = :name, price = :price, imgUrl = :imgUrl, description = :description WHERE productID = :id`,
+			{
+				replacements: {
+					id: productFoundId,
+					name: updatedProduct.name,
+					price: updatedProduct.price,
+					imgUrl: updatedProduct.imgUrl,
+					description: updatedProduct.description
+				}
+			}
+		);
+		res.status(200).send(`Product with id ${productFoundId} modified correctly`);
+	} else {
+		res.status(404).send("No product matches the ID provided");
 	}
-	res.status(200).json(productFound);
 });
+
+function filterEmptyProps(inputObject) {
+	Object.keys(inputObject).forEach(key => !inputObject[key] && delete inputObject[key]);
+	return inputObject;
+}
 
 async function getByID(table, tableParam, inputParam) {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
 		type: sequelize.QueryTypes.SELECT
 	});
-	return !!searchResult.length ? searchResult : false;
+	return !!searchResult.length ? searchResult[0] : false;
 }
 
 // Generic error detection
