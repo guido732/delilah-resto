@@ -85,8 +85,6 @@ server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
 	const existingUsername = await getByParm("users", "user", username);
 	const existingEmail = await getByParm("users", "mail", email);
-	console.log(existingUsername);
-	console.log(existingEmail);
 	if (existingUsername) {
 		res.status(409).json("Username already exists, please pick another");
 		return;
