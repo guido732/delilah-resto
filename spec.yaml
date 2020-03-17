@@ -49,8 +49,10 @@ paths:
       responses:
         "200":
           description: successful operation
-        "405":
+        "400":
           description: Validation exception
+        "409":
+          description: Username or email already registered
       security:
         - petstore_auth:
             - "write:pets"

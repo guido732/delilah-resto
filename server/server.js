@@ -37,13 +37,13 @@ server.post("/v1/products", async (req, res) => {
 
 server.get("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByID("products", "productID", productId);
+	const productFound = await getByParm("products", "productID", productId);
 	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
 });
 
 server.put("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByID("products", "productID", productId);
+	const productFound = await getByParm("products", "productID", productId);
 	if (productFound) {
 		const { name, price, imgUrl, description } = req.body;
 		// Filters "", null or undefined props and puts remaining into new object
@@ -70,7 +70,7 @@ server.put("/v1/products/:id", async (req, res) => {
 
 server.delete("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByID("products", "productID", productId);
+	const productFound = await getByParm("products", "productID", productId);
 	if (productFound) {
 		const deleteRow = await sequelize.query("DELETE FROM products WHERE productID = :id", {
 			replacements: { id: productId }
@@ -81,12 +81,37 @@ server.delete("/v1/products/:id", async (req, res) => {
 	}
 });
 
+server.post("/v1/users", async (req, res) => {
+	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
+	const existingUsername = await getByParm("users", "user", username);
+	const existingEmail = await getByParm("users", "mail", email);
+	console.log(existingUsername);
+	console.log(existingEmail);
+	if (existingUsername) {
+		res.status(409).json("Username already exists, please pick another");
+		return;
+	}
+	if (existingEmail) {
+		res.status(409).json("Email already exists, please pick another");
+		return;
+	}
+	if ((username && password && email && deliveryAddress, fullName, phone)) {
+		const insert = await sequelize.query(
+			"INSERT INTO users (user, pass, fullName, mail, phone, deliveryAddress) VALUES (:username, :password, :email, :deliveryAddress, :fullName, :phone)",
+			{ replacements: { username, password, email, deliveryAddress, fullName, phone } }
+		);
+		res.status(200).json("User correctly added to database");
+	} else {
+		res.status(400).send("Error validating input data");
+	}
+});
+
 function filterEmptyProps(inputObject) {
 	Object.keys(inputObject).forEach(key => !inputObject[key] && delete inputObject[key]);
 	return inputObject;
 }
 
-async function getByID(table, tableParam, inputParam) {
+async function getByParm(table, tableParam, inputParam) {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
 		type: sequelize.QueryTypes.SELECT
