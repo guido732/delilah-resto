@@ -6,6 +6,7 @@ const bp = require("body-parser");
 const jwt = require("jsonwebtoken");
 const Sequelize = require("sequelize");
 const sequelize = new Sequelize("mysql://root:@localhost:3306/delilah_resto");
+const signature = "jotunheim";
 
 server.use(bp.json());
 
@@ -95,8 +96,8 @@ server.post("/v1/users", async (req, res) => {
 	}
 	if ((username && password && email && deliveryAddress, fullName, phone)) {
 		const insert = await sequelize.query(
-			"INSERT INTO users (user, pass, fullName, mail, phone, deliveryAddress) VALUES (:username, :password, :email, :deliveryAddress, :fullName, :phone)",
-			{ replacements: { username, password, email, deliveryAddress, fullName, phone } }
+			"INSERT INTO users (user, pass, fullName, mail, phone, deliveryAddress) VALUES (:username, :password, :fullName, :email, :phone, :deliveryAddress)",
+			{ replacements: { username, password, fullName, email, phone, deliveryAddress } }
 		);
 		res.status(200).json("User correctly added to database");
 	} else {
@@ -104,12 +105,33 @@ server.post("/v1/users", async (req, res) => {
 	}
 });
 
+server.get("/v1/users/login", async (req, res) => {
+	const { user, pass } = req.body;
+	const foundUser = await getByParm("users", "user", user);
+	if (foundUser.pass === pass) {
+		const token = generateToken({ user: foundUser.user, id: foundUser.userID, isAdmin: foundUser.isAdmin });
+		res.status(200).json(token);
+	} else {
+		res.status(400).send("Invalid username/password supplied");
+	}
+});
+
+function generateToken(info, expiration) {
+	return jwt.sign(info, signature);
+}
+function validateToken(req, res, next) {
+	const { token } = req.body;
+	if (jwt.verify(token, signature)) {
+		next();
+	} else {
+		res.status(401).json("Invalid Token");
+	}
+}
 function filterEmptyProps(inputObject) {
 	Object.keys(inputObject).forEach(key => !inputObject[key] && delete inputObject[key]);
 	return inputObject;
 }
-
-async function getByParm(table, tableParam, inputParam) {
+async function getByParm(table = "", tableParam = "", inputParam = "") {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
 		type: sequelize.QueryTypes.SELECT

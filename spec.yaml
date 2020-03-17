@@ -132,6 +132,8 @@ paths:
             $ref: "#/definitions/Token"
         "400":
           description: Invalid username/password supplied
+        "401":
+          description: Invalid Token
   /users/logout:
     get:
       tags:
