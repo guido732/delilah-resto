@@ -82,6 +82,13 @@ server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	}
 });
 
+server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
+	const users = await sequelize.query("SELECT * FROM users", {
+		type: sequelize.QueryTypes.SELECT
+	});
+	res.status(200).json(users);
+});
+
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
 	const existingUsername = await getByParam("users", "user", username);
