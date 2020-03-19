@@ -105,6 +105,10 @@ server.post("/v1/users", async (req, res) => {
 	}
 });
 
+server.get("/v1/validate-token", validateToken, async (req, res) => {
+	res.status(200).send("Valid Token, carry on");
+});
+
 server.get("/v1/users/login", async (req, res) => {
 	const { user, pass } = req.body;
 	const foundUser = await getByParm("users", "user", user);
@@ -116,21 +120,35 @@ server.get("/v1/users/login", async (req, res) => {
 	}
 });
 
-function generateToken(info, expiration) {
-	return jwt.sign(info, signature);
+function generateToken(info) {
+	return jwt.sign(info, signature, { expiresIn: "1h" });
 }
+
 function validateToken(req, res, next) {
 	const { token } = req.body;
-	if (jwt.verify(token, signature)) {
-		next();
-	} else {
+	try {
+		const verification = jwt.verify(token, signature);
+		const isAdmin = !!jwt.verify(token, signature).isAdmin;
+		req.isAdmin = isAdmin;
+		verification && next();
+	} catch (e) {
 		res.status(401).json("Invalid Token");
 	}
 }
+
+function isAdmin(req, res, next) {
+	if (req.isAdmin) {
+		next();
+	} else {
+		res.status(401).json("Not an admin");
+	}
+}
+
 function filterEmptyProps(inputObject) {
 	Object.keys(inputObject).forEach(key => !inputObject[key] && delete inputObject[key]);
 	return inputObject;
 }
+
 async function getByParm(table = "", tableParam = "", inputParam = "") {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
