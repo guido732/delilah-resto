@@ -151,8 +151,6 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 			const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress });
 			// Creates new object applying only the filtered Props over the previous ones
 			const updatedUser = { ...foundUser, ...filteredProps };
-			console.log(updatedUser);
-
 			const update = await sequelize.query(
 				`UPDATE users SET user = :user, pass = :pass, fullName = :fullName, mail = :mail, phone = :phone, deliveryAddress = :deliveryAddress WHERE userID = :userID`,
 				{
@@ -172,8 +170,27 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 			res.status(404).json("User not found");
 		}
 	} catch (error) {
-		console.log(error);
+		res.status(500).json(error);
+	}
+});
 
+server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
+	const username = req.params.username;
+	try {
+		const foundUser = await getByParam("users", "user", username);
+		const userID = foundUser.userID;
+		if (foundUser) {
+			const deleteUser = await sequelize.query("DELETE FROM users WHERE userID = :userID", {
+				replacements: {
+					userID: userID
+				}
+			});
+			res.status(200).send(`User ${username} was deleted correctly`);
+		} else {
+			res.status(404).json("User not found");
+		}
+	} catch (error) {
+		console.log(error);
 		res.status(500).json(error);
 	}
 });
