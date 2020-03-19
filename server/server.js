@@ -15,14 +15,14 @@ server.listen("3000", () => {
 	console.log(`Delilah Resto - Server Started ${date}`);
 });
 
-server.get("/v1/products", async (req, res) => {
+server.get("/v1/products", validateToken, async (req, res) => {
 	const products = await sequelize.query("SELECT * FROM products", {
 		type: sequelize.QueryTypes.SELECT
 	});
 	res.status(200).json(products);
 });
 
-server.post("/v1/products", async (req, res) => {
+server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
 	const { name, price, imgUrl, description } = req.body;
 	if (name && price && imgUrl && description) {
 		const insert = await sequelize.query(
@@ -36,13 +36,13 @@ server.post("/v1/products", async (req, res) => {
 	}
 });
 
-server.get("/v1/products/:id", async (req, res) => {
+server.get("/v1/products/:id", validateToken, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
 });
 
-server.put("/v1/products/:id", async (req, res) => {
+server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	if (productFound) {
@@ -69,7 +69,7 @@ server.put("/v1/products/:id", async (req, res) => {
 	}
 });
 
-server.delete("/v1/products/:id", async (req, res) => {
+server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	if (productFound) {
@@ -220,7 +220,7 @@ function isAdmin(req, res, next) {
 	if (req.isAdmin) {
 		next();
 	} else {
-		res.status(401).json("Not an admin");
+		res.status(401).json("Operation forbidden, not an admin");
 	}
 }
 
