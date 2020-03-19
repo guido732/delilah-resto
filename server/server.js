@@ -38,13 +38,13 @@ server.post("/v1/products", async (req, res) => {
 
 server.get("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByParm("products", "productID", productId);
+	const productFound = await getByParam("products", "productID", productId);
 	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
 });
 
 server.put("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByParm("products", "productID", productId);
+	const productFound = await getByParam("products", "productID", productId);
 	if (productFound) {
 		const { name, price, imgUrl, description } = req.body;
 		// Filters "", null or undefined props and puts remaining into new object
@@ -71,7 +71,7 @@ server.put("/v1/products/:id", async (req, res) => {
 
 server.delete("/v1/products/:id", async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByParm("products", "productID", productId);
+	const productFound = await getByParam("products", "productID", productId);
 	if (productFound) {
 		const deleteRow = await sequelize.query("DELETE FROM products WHERE productID = :id", {
 			replacements: { id: productId }
@@ -84,8 +84,8 @@ server.delete("/v1/products/:id", async (req, res) => {
 
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
-	const existingUsername = await getByParm("users", "user", username);
-	const existingEmail = await getByParm("users", "mail", email);
+	const existingUsername = await getByParam("users", "user", username);
+	const existingEmail = await getByParam("users", "mail", email);
 	if (existingUsername) {
 		res.status(409).json("Username already exists, please pick another");
 		return;
@@ -105,19 +105,34 @@ server.post("/v1/users", async (req, res) => {
 	}
 });
 
-server.get("/v1/validate-token", validateToken, async (req, res) => {
-	res.status(200).send("Valid Token, carry on");
+server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
+	const username = req.params.username;
+	try {
+		const foundUser = await getByParam("users", "user", username);
+		if (foundUser) {
+			res.status(200).json(foundUser);
+		} else {
+			res.status(404).json("User not found");
+		}
+	} catch (error) {
+		res.status(500).json(error);
+	}
 });
 
 server.get("/v1/users/login", async (req, res) => {
 	const { user, pass } = req.body;
-	const foundUser = await getByParm("users", "user", user);
+	const foundUser = await getByParam("users", "user", user);
 	if (foundUser.pass === pass) {
 		const token = generateToken({ user: foundUser.user, id: foundUser.userID, isAdmin: foundUser.isAdmin });
 		res.status(200).json(token);
 	} else {
 		res.status(400).send("Invalid username/password supplied");
 	}
+});
+
+// Test Endpoints
+server.get("/v1/validate-token", validateToken, async (req, res) => {
+	res.status(200).send("Valid Token, carry on");
 });
 
 function generateToken(info) {
@@ -149,7 +164,7 @@ function filterEmptyProps(inputObject) {
 	return inputObject;
 }
 
-async function getByParm(table = "", tableParam = "", inputParam = "") {
+async function getByParam(table = "", tableParam = "", inputParam = "") {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
 		type: sequelize.QueryTypes.SELECT

@@ -134,19 +134,6 @@ paths:
           description: Invalid username/password supplied
         "401":
           description: Invalid Token
-  /users/logout:
-    get:
-      tags:
-        - User
-      summary: Logs out current logged in user session
-      description: ""
-      operationId: logoutUser
-      produces:
-        - application/json
-      # parameters: []
-      responses:
-        default:
-          description: successful operation
   "/users/:username":
     get:
       tags:
