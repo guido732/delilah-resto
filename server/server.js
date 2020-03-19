@@ -105,6 +105,17 @@ server.post("/v1/users", async (req, res) => {
 	}
 });
 
+server.get("/v1/users/login", async (req, res) => {
+	const { user, pass } = req.body;
+	const foundUser = await getByParam("users", "user", user);
+	if (foundUser.pass === pass) {
+		const token = generateToken({ user: foundUser.user, id: foundUser.userID, isAdmin: foundUser.isAdmin });
+		res.status(200).json(token);
+	} else {
+		res.status(400).send("Invalid username/password supplied");
+	}
+});
+
 server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
@@ -119,14 +130,51 @@ server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	}
 });
 
-server.get("/v1/users/login", async (req, res) => {
-	const { user, pass } = req.body;
-	const foundUser = await getByParam("users", "user", user);
-	if (foundUser.pass === pass) {
-		const token = generateToken({ user: foundUser.user, id: foundUser.userID, isAdmin: foundUser.isAdmin });
-		res.status(200).json(token);
-	} else {
-		res.status(400).send("Invalid username/password supplied");
+server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
+	const username = req.params.username;
+	try {
+		const foundUser = await getByParam("users", "user", username);
+		const userID = foundUser.userID;
+		if (foundUser) {
+			const { user, pass, fullName, mail, phone, deliveryAddress } = req.body;
+			const existingUsername = await getByParam("users", "user", user);
+			const existingEmail = await getByParam("users", "mail", mail);
+			if (existingUsername) {
+				res.status(409).json("Username already exists, please pick another");
+				return;
+			}
+			if (existingEmail) {
+				res.status(409).json("Email already exists, please pick another");
+				return;
+			}
+			// Filters "", null or undefined props and puts remaining into new object
+			const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress });
+			// Creates new object applying only the filtered Props over the previous ones
+			const updatedUser = { ...foundUser, ...filteredProps };
+			console.log(updatedUser);
+
+			const update = await sequelize.query(
+				`UPDATE users SET user = :user, pass = :pass, fullName = :fullName, mail = :mail, phone = :phone, deliveryAddress = :deliveryAddress WHERE userID = :userID`,
+				{
+					replacements: {
+						user: updatedUser.user,
+						pass: updatedUser.pass,
+						fullName: updatedUser.fullName,
+						mail: updatedUser.mail,
+						phone: updatedUser.phone,
+						deliveryAddress: updatedUser.deliveryAddress,
+						userID: userID
+					}
+				}
+			);
+			res.status(200).send(`User ${username} was modified correctly`);
+		} else {
+			res.status(404).json("User not found");
+		}
+	} catch (error) {
+		console.log(error);
+
+		res.status(500).json(error);
 	}
 });
 

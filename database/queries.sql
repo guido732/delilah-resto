@@ -17,7 +17,7 @@ CREATE TABLE orders (
   description VARCHAR(150) NOT NULL,
   paymentMethod VARCHAR (60) NOT NULL,
   total FLOAT NOT NULL,
-  userID INT NOT NULL,
+  userID INT NOT NULL DEFAULT "0",
   FOREIGN KEY(userID) REFERENCES users(userID)
 );
 
