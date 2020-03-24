@@ -116,15 +116,24 @@ server.post("/v1/users", async (req, res) => {
 	}
 });
 
-// Hacer validación que no esté disabled el usuario
 server.get("/v1/users/login", async (req, res) => {
 	const { user, pass } = req.body;
-	const foundUser = await getByParam("users", "user", user);
-	if (foundUser.pass === pass) {
-		const token = generateToken({ user: foundUser.user, id: foundUser.userID, isAdmin: foundUser.isAdmin });
-		res.status(200).json(token);
-	} else {
-		res.status(400).send("Invalid username/password supplied");
+	try {
+		const foundUser = await getByParam("users", "user", user);
+		if (foundUser.pass !== pass) {
+			res.status(400).send("Invalid username/password supplied");
+		} else if (foundUser.disabled) {
+			res.status(401).send("Invalid request, user account is disabled");
+		} else {
+			const token = generateToken({
+				user: foundUser.user,
+				id: foundUser.userID,
+				isAdmin: foundUser.isAdmin
+			});
+			res.status(200).json(token);
+		}
+	} catch (error) {
+		res.status(500).json(error);
 	}
 });
 
@@ -145,12 +154,60 @@ server.get("/v1/users/active", validateToken, async (req, res) => {
 	}
 });
 
+// Chequear que no exista otro usuario con esos datos (validar si el active user/id no matchea con otro más)
 server.put("/v1/users/active", validateToken, async (req, res) => {
-	res.status(200).json("data");
+	const { token } = req.body;
+	const username = jwt.verify(token, signature).user;
+	try {
+		const foundUser = await getByParam("users", "user", username);
+		const userID = foundUser.userID;
+		if (foundUser) {
+			const { user, fullName, mail, phone, deliveryAddress } = req.body.data;
+			const existingUsername = await getByParam("users", "user", user);
+			const existingEmail = await getByParam("users", "mail", mail);
+			if (existingUsername) {
+				res.status(409).json("Username already exists, please pick another");
+				return;
+			}
+			if (existingEmail) {
+				res.status(409).json("Email already exists, please pick another");
+				return;
+			}
+			// Filters "", null or undefined props and puts remaining into new object
+			const filteredProps = filterEmptyProps({ user, fullName, mail, phone, deliveryAddress });
+			// Creates new object applying only the filtered Props over the previous ones
+			const updatedUser = { ...foundUser, ...filteredProps };
+			const update = await sequelize.query(
+				`UPDATE users SET user = :user, fullName = :fullName, mail = :mail, phone = :phone, deliveryAddress = :deliveryAddress WHERE userID = :userID`,
+				{
+					replacements: {
+						user: updatedUser.user,
+						fullName: updatedUser.fullName,
+						mail: updatedUser.mail,
+						phone: updatedUser.phone,
+						deliveryAddress: updatedUser.deliveryAddress,
+						userID: userID
+					}
+				}
+			);
+			res.status(200).send(`User was modified correctly`);
+		} else {
+			res.status(404).json("User not found");
+		}
+	} catch (error) {
+		res.status(500).json(error);
+	}
 });
 
 server.delete("/v1/users/active", validateToken, async (req, res) => {
-	res.status(200).json("data");
+	const { token } = req.body;
+	const userID = jwt.verify(token, signature).id;
+	const update = await sequelize.query(`UPDATE users SET disabled = true WHERE userID = :userID`, {
+		replacements: {
+			userID: userID
+		}
+	});
+	res.status(200).json("User account disabled");
 });
 
 server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
@@ -247,8 +304,7 @@ function validateToken(req, res, next) {
 	const { token } = req.body;
 	try {
 		const verification = jwt.verify(token, signature);
-		const isAdmin = !!jwt.verify(token, signature).isAdmin;
-		req.isAdmin = isAdmin;
+		req.tokenInfo = verification;
 		verification && next();
 	} catch (e) {
 		res.status(401).json("Invalid Token");
@@ -256,11 +312,7 @@ function validateToken(req, res, next) {
 }
 
 function isAdmin(req, res, next) {
-	if (req.isAdmin) {
-		next();
-	} else {
-		res.status(401).json("Operation forbidden, not an admin");
-	}
+	req.tokenInfo.isAdmin ? next() : res.status(401).json("Operation forbidden, not an admin");
 }
 
 function filterEmptyProps(inputObject) {
