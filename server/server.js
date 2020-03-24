@@ -16,14 +16,14 @@ server.listen("3000", () => {
 });
 
 // PRODUCTS
-server.get("/v1/products", validateToken, isDisabled, async (req, res) => {
+server.get("/v1/products", validateToken, async (req, res) => {
 	const products = await sequelize.query("SELECT * FROM products", {
 		type: sequelize.QueryTypes.SELECT
 	});
 	res.status(200).json(products);
 });
 
-server.post("/v1/products", validateToken, isDisabled, isAdmin, async (req, res) => {
+server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
 	const { name, price, imgUrl, description } = req.body;
 	if (name && price && imgUrl && description) {
 		const insert = await sequelize.query(
@@ -37,13 +37,13 @@ server.post("/v1/products", validateToken, isDisabled, isAdmin, async (req, res)
 	}
 });
 
-server.get("/v1/products/:id", validateToken, isDisabled, async (req, res) => {
+server.get("/v1/products/:id", validateToken, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
 });
 
-server.put("/v1/products/:id", validateToken, isDisabled, isAdmin, async (req, res) => {
+server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	if (productFound) {
@@ -72,7 +72,7 @@ server.put("/v1/products/:id", validateToken, isDisabled, isAdmin, async (req, r
 
 // cambiar por disable en tabla (Agregar a query de creación)
 // Hacer endpoint enable product
-server.delete("/v1/products/:id", validateToken, isDisabled, isAdmin, async (req, res) => {
+server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	if (productFound) {
@@ -86,11 +86,16 @@ server.delete("/v1/products/:id", validateToken, isDisabled, isAdmin, async (req
 });
 
 // USERS
-server.get("/v1/users", validateToken, isDisabled, isAdmin, async (req, res) => {
+// Delete password key from object
+server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
 	const users = await sequelize.query("SELECT * FROM users", {
 		type: sequelize.QueryTypes.SELECT
 	});
-	res.status(200).json(users);
+	const filteredUsers = users.map(user => {
+		delete user.pass;
+		return user;
+	});
+	res.status(200).json(filteredUsers);
 });
 
 server.post("/v1/users", async (req, res) => {
@@ -138,7 +143,7 @@ server.get("/v1/users/login", async (req, res) => {
 	}
 });
 
-server.get("/v1/users/active", validateToken, isDisabled, async (req, res) => {
+server.get("/v1/users/active", validateToken, async (req, res) => {
 	const { token } = req.body;
 	const userID = jwt.verify(token, signature).id;
 	try {
@@ -156,7 +161,7 @@ server.get("/v1/users/active", validateToken, isDisabled, async (req, res) => {
 });
 
 // Chequear que no exista otro usuario con esos datos (validar si el active user/id no matchea con otro más)
-server.put("/v1/users/active", validateToken, isDisabled, async (req, res) => {
+server.put("/v1/users/active", validateToken, async (req, res) => {
 	const { token } = req.body;
 	const username = jwt.verify(token, signature).user;
 	try {
@@ -200,7 +205,7 @@ server.put("/v1/users/active", validateToken, isDisabled, async (req, res) => {
 	}
 });
 
-server.delete("/v1/users/active", validateToken, isDisabled, async (req, res) => {
+server.delete("/v1/users/active", validateToken, async (req, res) => {
 	const { token } = req.body;
 	const userID = jwt.verify(token, signature).id;
 	const update = await sequelize.query(`UPDATE users SET disabled = true WHERE userID = :userID`, {
@@ -211,7 +216,7 @@ server.delete("/v1/users/active", validateToken, isDisabled, async (req, res) =>
 	res.status(200).json("User account disabled");
 });
 
-server.get("/v1/users/:username", validateToken, isDisabled, isAdmin, async (req, res) => {
+server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
 		const foundUser = await getByParam("users", "user", username);
@@ -225,7 +230,7 @@ server.get("/v1/users/:username", validateToken, isDisabled, isAdmin, async (req
 	}
 });
 
-server.put("/v1/users/:username", validateToken, isDisabled, isAdmin, async (req, res) => {
+server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
 		const foundUser = await getByParam("users", "user", username);
@@ -271,7 +276,7 @@ server.put("/v1/users/:username", validateToken, isDisabled, isAdmin, async (req
 
 // cambiar por disable en tabla (Agregar a query de creación)
 // Hacer endpoint enable user
-server.delete("/v1/users/:username", validateToken, isDisabled, isAdmin, async (req, res) => {
+server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
 		const foundUser = await getByParam("users", "user", username);
@@ -293,7 +298,7 @@ server.delete("/v1/users/:username", validateToken, isDisabled, isAdmin, async (
 });
 
 // Test only Endpoints
-server.get("/v1/validate-token", validateToken, isDisabled, async (req, res) => {
+server.get("/v1/validate-token", validateToken, async (req, res) => {
 	res.status(200).send("Valid Token, carry on");
 });
 
@@ -305,8 +310,13 @@ function validateToken(req, res, next) {
 	const { token } = req.body;
 	try {
 		const verification = jwt.verify(token, signature);
-		req.tokenInfo = verification;
-		verification && next();
+		const isDisabled = !!verification.isDisabled;
+		if (isDisabled) {
+			res.status(401).send("Invalid request, user account is disabled");
+		} else {
+			req.tokenInfo = verification;
+			next();
+		}
 	} catch (e) {
 		res.status(401).json("Invalid Token");
 	}
@@ -314,10 +324,6 @@ function validateToken(req, res, next) {
 
 function isAdmin(req, res, next) {
 	req.tokenInfo.isAdmin ? next() : res.status(401).json("Operation forbidden, not an admin");
-}
-
-function isDisabled(req, res, next) {
-	req.tokenInfo.isDisabled ? res.status(401).json("Operation forbidden, user is disabled") : next();
 }
 
 function filterEmptyProps(inputObject) {
