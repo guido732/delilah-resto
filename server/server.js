@@ -15,6 +15,7 @@ server.listen("3000", () => {
 	console.log(`Delilah Resto - Server Started ${date}`);
 });
 
+// PRODUCTS
 server.get("/v1/products", validateToken, async (req, res) => {
 	const products = await sequelize.query("SELECT * FROM products", {
 		type: sequelize.QueryTypes.SELECT
@@ -69,6 +70,8 @@ server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	}
 });
 
+// cambiar por disable en tabla (Agregar a query de creación)
+// Hacer endpoint enable product
 server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
@@ -82,6 +85,7 @@ server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	}
 });
 
+// USERS
 server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
 	const users = await sequelize.query("SELECT * FROM users", {
 		type: sequelize.QueryTypes.SELECT
@@ -112,6 +116,7 @@ server.post("/v1/users", async (req, res) => {
 	}
 });
 
+// Hacer validación que no esté disabled el usuario
 server.get("/v1/users/login", async (req, res) => {
 	const { user, pass } = req.body;
 	const foundUser = await getByParam("users", "user", user);
@@ -121,6 +126,31 @@ server.get("/v1/users/login", async (req, res) => {
 	} else {
 		res.status(400).send("Invalid username/password supplied");
 	}
+});
+
+server.get("/v1/users/active", validateToken, async (req, res) => {
+	const { token } = req.body;
+	const userID = jwt.verify(token, signature).id;
+	try {
+		const foundUser = await getByParam("users", "userID", userID);
+		if (foundUser) {
+			const { user, fullName, mail, phone, deliveryAddress } = foundUser;
+			const userData = { user, fullName, mail, phone, deliveryAddress };
+			res.status(200).json(userData);
+		} else {
+			res.status(404).json("User not found");
+		}
+	} catch (e) {
+		res.status(500).json(error);
+	}
+});
+
+server.put("/v1/users/active", validateToken, async (req, res) => {
+	res.status(200).json("data");
+});
+
+server.delete("/v1/users/active", validateToken, async (req, res) => {
+	res.status(200).json("data");
 });
 
 server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
@@ -181,6 +211,8 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	}
 });
 
+// cambiar por disable en tabla (Agregar a query de creación)
+// Hacer endpoint enable user
 server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
@@ -202,7 +234,7 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 	}
 });
 
-// Test Endpoints
+// Test only Endpoints
 server.get("/v1/validate-token", validateToken, async (req, res) => {
 	res.status(200).send("Valid Token, carry on");
 });
