@@ -14,6 +14,7 @@ const signature = require("./jwt");
 // DB setup/connection
 const { conf_db_host, conf_db_name, conf_user, conf_password, conf_port } = require("../database/db_connection_data");
 const Sequelize = require("sequelize");
+const { QueryTypes } = require("sequelize");
 const sequelize = new Sequelize(`mysql://${conf_user}:${conf_password}@${conf_db_host}:${conf_port}/${conf_db_name}`);
 
 // Server Setup
@@ -26,7 +27,7 @@ server.listen("3000", () => {
 // PRODUCTS
 server.get("/v1/products", validateToken, async (req, res) => {
 	const products = await sequelize.query("SELECT * FROM products", {
-		type: sequelize.QueryTypes.SELECT
+		type: QueryTypes.SELECT
 	});
 	res.status(200).json(products);
 });
@@ -90,10 +91,9 @@ server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 });
 
 // USERS
-// Delete password key from object
 server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
 	const users = await sequelize.query("SELECT * FROM users", {
-		type: sequelize.QueryTypes.SELECT
+		type: QueryTypes.SELECT
 	});
 	const filteredUsers = users.map(user => {
 		delete user.pass;
@@ -145,8 +145,8 @@ server.get("/v1/users/login", async (req, res) => {
 	}
 });
 server.get("/v1/users/active", validateToken, async (req, res) => {
-	const { token } = req.body;
-	const userID = jwt.verify(token, signature).id;
+	const token = req.tokenInfo;
+	const userID = token.id;
 	try {
 		const foundUser = await getByParam("users", "userID", userID);
 		if (foundUser) {
@@ -162,8 +162,8 @@ server.get("/v1/users/active", validateToken, async (req, res) => {
 });
 // Chequear que no exista otro usuario con esos datos (validar si el active user/id no matchea con otro más)
 server.put("/v1/users/active", validateToken, async (req, res) => {
-	const { token } = req.body;
-	const username = jwt.verify(token, signature).user;
+	const token = req.tokenInfo;
+	const username = token.user;
 	try {
 		const foundUser = await getByParam("users", "user", username);
 		const userID = foundUser.userID;
@@ -205,8 +205,8 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 	}
 });
 server.delete("/v1/users/active", validateToken, async (req, res) => {
-	const { token } = req.body;
-	const userID = jwt.verify(token, signature).id;
+	const token = req.tokenInfo;
+	const userID = token.id;
 	const update = await sequelize.query(`UPDATE users SET disabled = true WHERE userID = :userID`, {
 		replacements: {
 			userID: userID
@@ -304,8 +304,9 @@ server.get("/v1/validate-token", validateToken, async (req, res) => {
 function generateToken(info) {
 	return jwt.sign(info, signature, { expiresIn: "1h" });
 }
+// Reemplazar validación de usuario deshabilitado desde BD y no el token
 function validateToken(req, res, next) {
-	const { token } = req.body;
+	const token = req.headers.authorization.split(" ")[1];
 	try {
 		const verification = jwt.verify(token, signature);
 		const isDisabled = !!verification.isDisabled;
@@ -329,7 +330,7 @@ function filterEmptyProps(inputObject) {
 async function getByParam(table = "", tableParam = "", inputParam = "") {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
-		type: sequelize.QueryTypes.SELECT
+		type: QueryTypes.SELECT
 	});
 	return !!searchResult.length ? searchResult[0] : false;
 }
