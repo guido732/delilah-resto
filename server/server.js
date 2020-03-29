@@ -1,15 +1,23 @@
-// Delilah Resto - NodeJs Server
+// ##############################################
+// ####### Delilah Resto - NodeJs Server  #######
+// ##############################################
 
+// Imports
+// Express
 const express = require("express");
 const server = express();
+// Middlewares
 const bp = require("body-parser");
+// JWT
 const jwt = require("jsonwebtoken");
+const signature = require("./jwt");
+// DB setup/connection
+const { conf_db_host, conf_db_name, conf_user, conf_password, conf_port } = require("../database/db_connection_data");
 const Sequelize = require("sequelize");
-const sequelize = new Sequelize("mysql://root:@localhost:3306/delilah_resto");
-const signature = "jotunheim";
+const sequelize = new Sequelize(`mysql://${conf_user}:${conf_password}@${conf_db_host}:${conf_port}/${conf_db_name}`);
 
+// Server Setup
 server.use(bp.json());
-
 server.listen("3000", () => {
 	const date = new Date();
 	console.log(`Delilah Resto - Server Started ${date}`);
@@ -22,7 +30,6 @@ server.get("/v1/products", validateToken, async (req, res) => {
 	});
 	res.status(200).json(products);
 });
-
 server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
 	const { name, price, imgUrl, description } = req.body;
 	if (name && price && imgUrl && description) {
@@ -36,13 +43,11 @@ server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
 		res.status(400).send("Error validating input data");
 	}
 });
-
 server.get("/v1/products/:id", validateToken, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
 });
-
 server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
@@ -69,7 +74,6 @@ server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 		res.status(404).send("No product matches the ID provided");
 	}
 });
-
 // cambiar por disable en tabla (Agregar a query de creación)
 // Hacer endpoint enable product
 server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
@@ -97,7 +101,6 @@ server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
 	});
 	res.status(200).json(filteredUsers);
 });
-
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
 	const existingUsername = await getByParam("users", "user", username);
@@ -120,7 +123,6 @@ server.post("/v1/users", async (req, res) => {
 		res.status(400).send("Error validating input data");
 	}
 });
-
 server.get("/v1/users/login", async (req, res) => {
 	const { user, pass } = req.body;
 	try {
@@ -142,7 +144,6 @@ server.get("/v1/users/login", async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-
 server.get("/v1/users/active", validateToken, async (req, res) => {
 	const { token } = req.body;
 	const userID = jwt.verify(token, signature).id;
@@ -159,7 +160,6 @@ server.get("/v1/users/active", validateToken, async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-
 // Chequear que no exista otro usuario con esos datos (validar si el active user/id no matchea con otro más)
 server.put("/v1/users/active", validateToken, async (req, res) => {
 	const { token } = req.body;
@@ -204,7 +204,6 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-
 server.delete("/v1/users/active", validateToken, async (req, res) => {
 	const { token } = req.body;
 	const userID = jwt.verify(token, signature).id;
@@ -215,7 +214,6 @@ server.delete("/v1/users/active", validateToken, async (req, res) => {
 	});
 	res.status(200).json("User account disabled");
 });
-
 server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
@@ -229,7 +227,6 @@ server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-
 server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
@@ -273,7 +270,6 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-
 // cambiar por disable en tabla (Agregar a query de creación)
 // Hacer endpoint enable user
 server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
@@ -297,15 +293,17 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 	}
 });
 
-// Test only Endpoints
+// Test Endpoints
 server.get("/v1/validate-token", validateToken, async (req, res) => {
 	res.status(200).send("Valid Token, carry on");
 });
 
+// Functions & Middlewares
+// TODO modificar dónde se envía/recibe token
+// Modificar en endpoints de postman también
 function generateToken(info) {
 	return jwt.sign(info, signature, { expiresIn: "1h" });
 }
-
 function validateToken(req, res, next) {
 	const { token } = req.body;
 	try {
@@ -321,16 +319,13 @@ function validateToken(req, res, next) {
 		res.status(401).json("Invalid Token");
 	}
 }
-
 function isAdmin(req, res, next) {
 	req.tokenInfo.isAdmin ? next() : res.status(401).json("Operation forbidden, not an admin");
 }
-
 function filterEmptyProps(inputObject) {
 	Object.keys(inputObject).forEach(key => !inputObject[key] && delete inputObject[key]);
 	return inputObject;
 }
-
 async function getByParam(table = "", tableParam = "", inputParam = "") {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
