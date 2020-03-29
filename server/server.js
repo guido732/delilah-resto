@@ -168,7 +168,7 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 		const foundUser = await getByParam("users", "user", username);
 		const userID = foundUser.userID;
 		if (foundUser) {
-			const { user, fullName, mail, phone, deliveryAddress } = req.body.data;
+			const { user, fullName, mail, phone, deliveryAddress } = req.body;
 			const existingUsername = await getByParam("users", "user", user);
 			const existingEmail = await getByParam("users", "mail", mail);
 			if (existingUsername) {
