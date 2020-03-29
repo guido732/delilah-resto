@@ -304,12 +304,12 @@ server.get("/v1/validate-token", validateToken, async (req, res) => {
 function generateToken(info) {
 	return jwt.sign(info, signature, { expiresIn: "1h" });
 }
-// Reemplazar validación de usuario deshabilitado desde BD y no el token
-function validateToken(req, res, next) {
+async function validateToken(req, res, next) {
 	const token = req.headers.authorization.split(" ")[1];
 	try {
 		const verification = jwt.verify(token, signature);
-		const isDisabled = !!verification.isDisabled;
+		const foundUser = await getByParam("users", "userID", verification.id);
+		const isDisabled = !!foundUser.disabled;
 		if (isDisabled) {
 			res.status(401).send("Invalid request, user account is disabled");
 		} else {
