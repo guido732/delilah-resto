@@ -245,11 +245,11 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 				return;
 			}
 			// Filters "", null or undefined props and puts remaining into new object
-			const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress });
+			const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress, disabled });
 			// Creates new object applying only the filtered Props over the previous ones
 			const updatedUser = { ...foundUser, ...filteredProps };
 			const update = await sequelize.query(
-				`UPDATE users SET user = :user, pass = :pass, fullName = :fullName, mail = :mail, phone = :phone, deliveryAddress = :deliveryAddress WHERE userID = :userID`,
+				`UPDATE users SET user = :user, pass = :pass, fullName = :fullName, mail = :mail, phone = :phone, deliveryAddress = :deliveryAddress, disabled = :disabled WHERE userID = :userID`,
 				{
 					replacements: {
 						user: updatedUser.user,
@@ -258,7 +258,8 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 						mail: updatedUser.mail,
 						phone: updatedUser.phone,
 						deliveryAddress: updatedUser.deliveryAddress,
-						userID: userID
+						userID: userID,
+						disabled: disabled
 					}
 				}
 			);
@@ -270,20 +271,18 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-// cambiar por disable en tabla (Agregar a query de creación)
-// Hacer endpoint enable user
 server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
 		const foundUser = await getByParam("users", "user", username);
 		const userID = foundUser.userID;
 		if (foundUser) {
-			const deleteUser = await sequelize.query("DELETE FROM users WHERE userID = :userID", {
+			const update = await sequelize.query(`UPDATE users SET disabled = true WHERE userID = :userID`, {
 				replacements: {
 					userID: userID
 				}
 			});
-			res.status(200).send(`User ${username} was deleted correctly`);
+			res.status(200).send(`User ${username} was disabled correctly`);
 		} else {
 			res.status(404).json("User not found");
 		}
