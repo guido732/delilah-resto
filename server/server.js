@@ -26,7 +26,7 @@ server.listen("3000", () => {
 
 // PRODUCTS
 server.get("/v1/products", validateToken, async (req, res) => {
-	const products = await sequelize.query("SELECT * FROM products", {
+	const products = await sequelize.query("SELECT * FROM products WHERE disabled = FALSE", {
 		type: QueryTypes.SELECT
 	});
 	res.status(200).json(products);
@@ -53,20 +53,21 @@ server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	const productFound = await getByParam("products", "productID", productId);
 	if (productFound) {
-		const { name, price, imgUrl, description } = req.body;
+		const { name, price, imgUrl, description, disabled } = req.body;
 		// Filters "", null or undefined props and puts remaining into new object
-		const filteredProps = filterEmptyProps({ name, price, imgUrl, description });
+		const filteredProps = filterEmptyProps({ name, price, imgUrl, description, disabled });
 		// Creates new object applying only the filtered Props over the previous ones
 		const updatedProduct = { ...productFound, ...filteredProps };
 		const update = await sequelize.query(
-			`UPDATE products SET name = :name, price = :price, imgUrl = :imgUrl, description = :description WHERE productID = :id`,
+			`UPDATE products SET name = :name, price = :price, imgUrl = :imgUrl, description = :description, disabled = :disabled WHERE productID = :id`,
 			{
 				replacements: {
 					id: productId,
 					name: updatedProduct.name,
 					price: updatedProduct.price,
 					imgUrl: updatedProduct.imgUrl,
-					description: updatedProduct.description
+					description: updatedProduct.description,
+					disabled: disabled
 				}
 			}
 		);
@@ -75,17 +76,19 @@ server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 		res.status(404).send("No product matches the ID provided");
 	}
 });
-// cambiar por disable en tabla (Agregar a query de creación)
-// Hacer endpoint enable product
 server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByParam("products", "productID", productId);
-	if (productFound) {
-		const deleteRow = await sequelize.query("DELETE FROM products WHERE productID = :id", {
-			replacements: { id: productId }
-		});
-		res.status(200).send(`Product with id ${productId} was deleted correctly`);
-	} else {
+	try {
+		const productFound = await getByParam("products", "productID", productId);
+		if (productFound) {
+			const update = await sequelize.query(`UPDATE products SET disabled = true WHERE productID = :id`, {
+				replacements: {
+					id: productId
+				}
+			});
+			res.status(200).send(`Product with id ${productId} was disabled correctly`);
+		}
+	} catch (error) {
 		res.status(404).send("No product matches the ID provided");
 	}
 });
@@ -233,7 +236,7 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 		const foundUser = await getByParam("users", "user", username);
 		const userID = foundUser.userID;
 		if (foundUser) {
-			const { user, pass, fullName, mail, phone, deliveryAddress } = req.body;
+			const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
 			const existingUsername = await getByParam("users", "user", user);
 			const existingEmail = await getByParam("users", "mail", mail);
 			if (existingUsername) {
