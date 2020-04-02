@@ -7,7 +7,8 @@ CREATE TABLE users (
   mail VARCHAR(60) NOT NULL,
   phone INT NOT NULL,
   deliveryAddress VARCHAR (60) NOT NULL,
-  isAdmin BOOLEAN
+  isAdmin BOOLEAN NOT NULL DEFAULT FALSE,
+  disabled BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE orders (
@@ -17,7 +18,7 @@ CREATE TABLE orders (
   description VARCHAR(150) NOT NULL,
   paymentMethod VARCHAR (60) NOT NULL,
   total FLOAT NOT NULL,
-  userID INT NOT NULL,
+  userID INT NOT NULL DEFAULT "0",
   FOREIGN KEY(userID) REFERENCES users(userID)
 );
 
@@ -26,7 +27,8 @@ CREATE TABLE products (
   name VARCHAR (60) NOT NULL,
   price FLOAT NOT NULL,
   imgUrl VARCHAR(200) NOT NULL,
-  description VARCHAR(150) NOT NULL
+  description VARCHAR(150) NOT NULL,
+  disabled BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE orders_products (
@@ -49,20 +51,7 @@ VALUES
     "guido732@gmail.com",
     1122223333,
     "Calle Falsa 123",
-    TRUE
-  );
-
-INSERT INTO
-  users
-VALUES
-  (
-    NULL,
-    "Bret",
-    "Bret123123",
-    "Leanne Graham",
-    "Sincere@april.biz",
-    1199998888,
-    "Kulas Light Apt.556",
+    TRUE,
     FALSE
   );
 
@@ -71,12 +60,28 @@ INSERT INTO
 VALUES
   (
     NULL,
-    "antonette",
-    "annie987",
-    "Ervin Howell",
-    "Shanna@melissa.tv",
+    "myxomatosis",
+    "thom_123",
+    "Thom Yorke",
+    "thom@radiohead.com",
+    1199998888,
+    "Kulas Light Apt.556",
+    FALSE,
+    FALSE
+  );
+
+INSERT INTO
+  users
+VALUES
+  (
+    NULL,
+    "cbarnett",
+    "mundanemonday",
+    "Courtney Barnett",
+    "courtney@gmail.com",
     0106926593,
     "Victor Plains Suite 879",
+    FALSE,
     FALSE
   );
 
@@ -89,7 +94,8 @@ VALUES
     "Hamburguesa Doble con Cheddar y papas",
     360,
     "https://via.placeholder.com/732",
-    "Dos medallones de carne con cheddar y bacon entre 2 panes Brioche y con una porción de papas fritas"
+    "Dos medallones de carne con cheddar y bacon entre 2 panes Brioche y con una porción de papas fritas",
+    FALSE
   );
 
 INSERT INTO
@@ -100,7 +106,8 @@ VALUES
     "Ensalada César con pollo",
     300,
     "https://via.placeholder.com/237",
-    "Ensalada de lechuga romana con salsa césar, crutones tostados, pollo a la plancha y queso parmesano"
+    "Ensalada de lechuga romana con salsa césar, crutones tostados, pollo a la plancha y queso parmesano",
+    FALSE
   );
 
 INSERT INTO
@@ -111,7 +118,8 @@ VALUES
     "Ensalada César sin pollo",
     265,
     "https://via.placeholder.com/200",
-    "Ensalada de lechuga romana con salsa césar, crutones tostados y queso parmesano"
+    "Ensalada de lechuga romana con salsa césar, crutones tostados y queso parmesano",
+    FALSE
   );
 
 INSERT INTO
@@ -122,7 +130,8 @@ VALUES
     "Coca cola 600ml",
     60,
     "https://via.placeholder.com/666",
-    "Botella de Coca-Cola 600ml no retornable"
+    "Botella de Coca-Cola 600ml no retornable",
+    FALSE
   );
 
 INSERT INTO
@@ -133,7 +142,8 @@ VALUES
     "Pizza grande de muzzarella",
     400,
     "https://via.placeholder.com/444",
-    "Pizza grande de muzzarella de 8 porciones"
+    "Pizza grande de muzzarella de 8 porciones",
+    FALSE
   );
 
 INSERT INTO
@@ -144,7 +154,8 @@ VALUES
     "Pizza grande de jamón y ananá",
     450,
     "https://via.placeholder.com/999",
-    "Pizza grande de jamón y ananá de 8 porciones"
+    "Pizza grande de jamón y ananá de 8 porciones",
+    FALSE
   );
 
 INSERT INTO
@@ -155,5 +166,12 @@ VALUES
     "Sánguche completo de milanesa a caballo con fritas",
     450,
     "https://via.placeholder.com/888",
-    "Sánguche de pan frances con miilanesa suprema o ternera frita, huevo frito, lechuga, tomate y porción de papas fritas"
+    "Sánguche de pan frances con miilanesa suprema o ternera frita, huevo frito, lechuga, tomate y porción de papas fritas",
+    FALSE
   );
+
+-- Drop Tables
+-- DROP TABLE orders_products;
+-- DROP TABLE products;
+-- DROP TABLE orders;
+-- DROP TABLE users;

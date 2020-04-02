@@ -30,6 +30,31 @@ schemes:
 
 paths:
   /users:
+    get:
+      tags:
+        - User
+      summary: Gets a list of all users (only admin)
+      description: Gets list of all existing users in the DataBase
+      operationId: getAllUsers
+      produces:
+        # - application/xml
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Active user Token
+          required: true
+          schema:
+            $ref: "#/definitions/Token"
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: Validation exception
+      security:
+        - petstore_auth:
+            - "write:pets"
+            - "read:pets"
     post:
       tags:
         - User
@@ -49,61 +74,14 @@ paths:
       responses:
         "200":
           description: successful operation
-        "405":
+        "400":
           description: Validation exception
+        "409":
+          description: Username or email already registered
       security:
         - petstore_auth:
             - "write:pets"
             - "read:pets"
-  /users/update:
-    put:
-      tags:
-        - User
-      summary: Update user
-      description: This can only be done by the logged in user.
-      operationId: updateUser
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: Updated user object
-          required: true
-          schema:
-            allOf:
-              - $ref: "#/definitions/Token"
-            type: object
-            properties:
-              data:
-                $ref: "#/definitions/User"
-      responses:
-        "400":
-          description: Invalid user supplied
-        "404":
-          description: User not found
-  /users/delete:
-    delete:
-      tags:
-        - User
-      summary: Delete user
-      description: This can only be done by the logged in user.
-      operationId: deleteUser
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: Token to validate deletion of user
-          required: true
-          schema:
-            $ref: "#/definitions/Token"
-      responses:
-        "200":
-          description: Username deleted correctly
-        "400":
-          description: Invalid username supplied
-        "404":
-          description: User not found
   /users/login:
     get:
       tags:
@@ -130,19 +108,79 @@ paths:
             $ref: "#/definitions/Token"
         "400":
           description: Invalid username/password supplied
-  /users/logout:
+        "401":
+          description: Invalid Token
+  /users/active:
     get:
       tags:
         - User
-      summary: Logs out current logged in user session
-      description: ""
-      operationId: logoutUser
+      summary: Gets data from active user via token validation
+      operationId: getActiveUserData
       produces:
         - application/json
-      # parameters: []
+      parameters:
+        - in: body
+          name: body
+          description: Active user Token
+          required: true
+          schema:
+            $ref: "#/definitions/Token"
       responses:
-        default:
-          description: successful operation
+        "200":
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/UserInfo"
+        "400":
+          description: Invalid username/password supplied
+        "401":
+          description: Invalid Token
+    put:
+      tags:
+        - User
+      summary: Edits active user data (validation via token)
+      operationId: editActiveUserData
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Fields to change + Token
+          required: true
+          schema:
+            allOf:
+              - $ref: "#/definitions/Token"
+            type: object
+            properties:
+              data:
+                $ref: "#/definitions/UserInfo"
+      responses:
+        "200":
+          description: Successful operation
+        "400":
+          description: Invalid username/password supplied
+        "401":
+          description: Invalid Token
+        "409":
+          description: Username or email already registered
+    delete:
+      tags:
+        - User
+      summary: Deletes(invalidates) active user account (validation via token)
+      operationId: deleteActiveUser
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Fields to change + Token
+          required: true
+          schema:
+            $ref: "#/definitions/Token"
+      responses:
+        "200":
+          description: Successful operation
+        "401":
+          description: Invalid Token
   "/users/:username":
     get:
       tags:
@@ -200,7 +238,7 @@ paths:
     delete:
       tags:
         - User
-      summary: Delete user  (only Admin)
+      summary: Delete(invalidate) user (only Admin)
       description: This can only be done by a logged in admin.
       operationId: deleteUserAdmin
       produces:
@@ -406,7 +444,7 @@ paths:
             type: object
             properties:
               data:
-                $ref: "#/definitions/Product"
+                $ref: "#/definitions/User"
       produces:
         - application/json
       responses:
@@ -462,6 +500,24 @@ definitions:
       password:
         type: string
         example: MySecretPass123
+      email:
+        type: string
+        example: gheedough@gmail.com
+      deliveryAddress:
+        type: string
+        example: Fake St. 123
+      fullName:
+        type: string
+        example: Guido Torres
+      phone:
+        type: integer
+        example: 5491122223333
+  UserInfo:
+    type: object
+    properties:
+      username:
+        type: string
+        example: ghee_dough
       email:
         type: string
         example: gheedough@gmail.com
