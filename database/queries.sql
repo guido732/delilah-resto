@@ -35,6 +35,7 @@ CREATE TABLE orders_products (
   orderProdID INT PRIMARY KEY AUTO_INCREMENT,
   orderID INT,
   productID INT,
+  productAmount INT NOT NULL,
   FOREIGN KEY(orderID) REFERENCES orders(orderID),
   FOREIGN KEY(productID) REFERENCES products(productID)
 );
@@ -169,6 +170,77 @@ VALUES
     "Sánguche de pan frances con miilanesa suprema o ternera frita, huevo frito, lechuga, tomate y porción de papas fritas",
     FALSE
   );
+
+-- Populate orders table
+INSERT INTO
+  orders
+VALUES
+  (
+    NULL,
+    "delivered",
+    NOW(),
+    "1x HambDobPapas, 2x Coca600",
+    "card",
+    480,
+    1
+  ),
+  (
+    NULL,
+    "canceled",
+    NOW(),
+    "2x Coca600",
+    "card",
+    120,
+    3
+  ),
+  (
+    NULL,
+    "sending",
+    NOW(),
+    "2x Coca600",
+    "cash",
+    120,
+    1
+  ),
+  (
+    NULL,
+    "preparing",
+    NOW(),
+    "1x GdeMuzza",
+    "cash",
+    400,
+    3
+  ),
+  (
+    NULL,
+    "confirmed",
+    NOW(),
+    "1x GdeJmonAnana",
+    "card",
+    450,
+    2
+  ),
+  (
+    NULL,
+    "new",
+    NOW(),
+    "1x SgchMilaCaba",
+    "cash",
+    450,
+    1
+  );
+
+-- Populate orders_products table
+INSERT INTO
+  orders_products
+VALUES
+  (NULL, 1, 1, 1),
+  (NULL, 1, 4, 2),
+  (NULL, 2, 4, 2),
+  (NULL, 3, 4, 2),
+  (NULL, 4, 5, 1),
+  (NULL, 5, 6, 1),
+  (NULL, 6, 7, 1);
 
 -- Drop Tables
 -- DROP TABLE orders_products;
