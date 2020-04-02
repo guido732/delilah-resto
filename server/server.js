@@ -295,7 +295,7 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 	}
 });
 
-// Users
+// Orders
 server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 	try {
 		const orders = await sequelize.query(
@@ -315,6 +315,37 @@ server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 		} else {
 			res.status(404).send("Search didn't bring any results");
 		}
+	} catch (error) {
+		res.status(500).send(error);
+	}
+});
+// make function to calculate total
+// Refactor total + description calculation
+server.post("/v1/orders", validateToken, async (req, res) => {
+	const userId = req.tokenInfo.id;
+	const { data, paymentMethod } = req.body;
+	try {
+		const total = await data.reduce(async (accum, product) => {
+			const foundProduct = await getByParam("products", "productID", product.productID);
+			accum = (await accum) + foundProduct.price * product.amount;
+			return accum;
+		}, 0);
+
+		const description = await data.reduce(async (accum, product) => {
+			const foundProduct = await getByParam("products", "productID", product.productID);
+			accum = (await accum) + `${product.amount}x ${foundProduct.description}, `;
+			return accum;
+		}, "");
+
+		const date = new Date();
+		const status = "new";
+
+		const submitOrder = await sequelize.query(
+			"INSERT INTO orders (status, date, description, paymentMethod, total, userID) VALUES (:status, :date, :description, :paymentMethod, :total, :userID)",
+			{ replacements: { status, date, description, paymentMethod, total, userID: userId } }
+		);
+
+		res.status(200).json("Order created successfully");
 	} catch (error) {
 		res.status(500).send(error);
 	}
