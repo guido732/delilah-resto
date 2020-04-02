@@ -295,6 +295,31 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 	}
 });
 
+// Users
+server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
+	try {
+		const orders = await sequelize.query(
+			"SELECT * FROM orders INNER JOIN users ON orders.userID = users.userID ORDER BY date DESC;",
+			{
+				type: QueryTypes.SELECT
+			}
+		);
+		if (orders.length) {
+			const filteredOrders = orders.map(user => {
+				delete user.pass;
+				delete user.isAdmin;
+				delete user.disabled;
+				return user;
+			});
+			res.status(200).json(filteredOrders);
+		} else {
+			res.status(404).send("Search didn't bring any results");
+		}
+	} catch (error) {
+		res.status(500).send(error);
+	}
+});
+
 // Test Endpoints
 server.get("/v1/validate-token", validateToken, async (req, res) => {
 	res.status(200).send("Valid Token, carry on");
