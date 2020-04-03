@@ -323,30 +323,37 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 	const userId = req.tokenInfo.id;
 	const { data, paymentMethod } = req.body;
 	try {
-		const getOrderDetails = Promise.all(data.map(product => getByParam("products", "productID", product.productID)));
-		const orderData = async () => {
-			let total = 0;
-			let description = "";
-			(await getOrderDetails).forEach((product, index) => {
-				total += product.price * data[index].amount;
-				description += `${data[index].amount}x ${product.name}, `;
-			});
-			description = description.substring(0, description.length - 2);
-			return [total, description];
-		};
-		const [total, description] = await orderData();
-		const order = await sequelize.query(
-			"INSERT INTO orders (status, date, description, paymentMethod, total, userID) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
-			{ replacements: { status: "new", date: new Date(), description, paymentMethod, total, userId } }
+		const getOrderDetails = await Promise.all(
+			data.map(product => getByParam("products", "productID", product.productID))
 		);
-		data.forEach(async product => {
-			const order_products = await sequelize.query(
-				"INSERT INTO orders_products (orderID, productID, productAmount) VALUES (:orderID, :productID, :productAmount)",
-				{ replacements: { orderID: order[0], productID: product.productID, productAmount: product.amount } }
+		const arrayValidation = val => !!val === true;
+		if (getOrderDetails.every(arrayValidation)) {
+			const orderData = async () => {
+				let total = 0;
+				let description = "";
+				(await getOrderDetails).forEach((product, index) => {
+					total += product.price * data[index].amount;
+					description += `${data[index].amount}x ${product.name}, `;
+				});
+				description = description.substring(0, description.length - 2);
+				return [total, description];
+			};
+			const [total, description] = await orderData();
+			const order = await sequelize.query(
+				"INSERT INTO orders (status, date, description, paymentMethod, total, userID) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
+				{ replacements: { status: "new", date: new Date(), description, paymentMethod, total, userId } }
 			);
-		});
-		console.log(`Order ${order[0]} was created`);
-		res.status(200).json("Order created successfully");
+			data.forEach(async product => {
+				const order_products = await sequelize.query(
+					"INSERT INTO orders_products (orderID, productID, productAmount) VALUES (:orderID, :productID, :productAmount)",
+					{ replacements: { orderID: order[0], productID: product.productID, productAmount: product.amount } }
+				);
+			});
+			console.log(`Order ${order[0]} was created`);
+			res.status(200).json("Order created successfully");
+		} else {
+			res.status(401).send("Invalid request, data provided is invalid");
+		}
 	} catch (error) {
 		res.status(500).send(error);
 		console.log(error);
