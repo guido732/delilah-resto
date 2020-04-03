@@ -335,11 +335,17 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 			return [total, description];
 		};
 		const [total, description] = await orderData();
-		const insert = await sequelize.query(
+		const order = await sequelize.query(
 			"INSERT INTO orders (status, date, description, paymentMethod, total, userID) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
 			{ replacements: { status: "new", date: new Date(), description, paymentMethod, total, userId } }
 		);
-		console.log(`Order ${insert[0]} was created`);
+		data.forEach(async product => {
+			const order_products = await sequelize.query(
+				"INSERT INTO orders_products (orderID, productID, productAmount) VALUES (:orderID, :productID, :productAmount)",
+				{ replacements: { orderID: order[0], productID: product.productID, productAmount: product.amount } }
+			);
+		});
+		console.log(`Order ${order[0]} was created`);
 		res.status(200).json("Order created successfully");
 	} catch (error) {
 		res.status(500).send(error);
