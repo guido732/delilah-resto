@@ -319,35 +319,31 @@ server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 		res.status(500).send(error);
 	}
 });
-// make function to calculate total
-// Refactor total + description calculation
 server.post("/v1/orders", validateToken, async (req, res) => {
 	const userId = req.tokenInfo.id;
 	const { data, paymentMethod } = req.body;
 	try {
-		const total = await data.reduce(async (accum, product) => {
-			const foundProduct = await getByParam("products", "productID", product.productID);
-			accum = (await accum) + foundProduct.price * product.amount;
-			return accum;
-		}, 0);
-
-		const description = await data.reduce(async (accum, product) => {
-			const foundProduct = await getByParam("products", "productID", product.productID);
-			accum = (await accum) + `${product.amount}x ${foundProduct.description}, `;
-			return accum;
-		}, "");
-
-		const date = new Date();
-		const status = "new";
-
-		const submitOrder = await sequelize.query(
-			"INSERT INTO orders (status, date, description, paymentMethod, total, userID) VALUES (:status, :date, :description, :paymentMethod, :total, :userID)",
-			{ replacements: { status, date, description, paymentMethod, total, userID: userId } }
+		const getOrderDetails = Promise.all(data.map(product => getByParam("products", "productID", product.productID)));
+		const orderData = async () => {
+			let total = 0;
+			let description = "";
+			(await getOrderDetails).forEach((product, index) => {
+				total += product.price * data[index].amount;
+				description += `${data[index].amount}x ${product.name}, `;
+			});
+			description = description.substring(0, description.length - 2);
+			return [total, description];
+		};
+		const [total, description] = await orderData();
+		const insert = await sequelize.query(
+			"INSERT INTO orders (status, date, description, paymentMethod, total, userID) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
+			{ replacements: { status: "new", date: new Date(), description, paymentMethod, total, userId } }
 		);
-
+		console.log(`Order ${insert[0]} was created`);
 		res.status(200).json("Order created successfully");
 	} catch (error) {
 		res.status(500).send(error);
+		console.log(error);
 	}
 });
 
