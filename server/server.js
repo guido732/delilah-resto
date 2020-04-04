@@ -314,17 +314,27 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 });
 
 // Orders
-// TODO: Review why orders can't be logged
-// TODO: make all users able to access endpoint and get their orders, admins get all
-server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
+server.get("/v1/orders", validateToken, async (req, res) => {
 	try {
-		// Gets a list of all orders
-		const orders = await sequelize.query(
-			"SELECT * FROM orders INNER JOIN users ON orders.user_id = users.user_id ORDER BY date DESC;",
-			{
-				type: QueryTypes.SELECT,
-			}
-		);
+		// Gets a list of all orders only if it's admin, otherwise gets only results that match the user's ID
+		let orders = [];
+		if (req.tokenInfo.isAdmin) {
+			orders = await sequelize.query(
+				"SELECT * FROM orders INNER JOIN users ON orders.user_id = users.user_id ORDER BY date DESC;",
+				{
+					type: QueryTypes.SELECT,
+				}
+			);
+		} else {
+			const id = req.tokenInfo.id;
+			orders = await sequelize.query(
+				"SELECT * FROM orders INNER JOIN users ON orders.user_id = users.user_id WHERE users.user_id = :id ORDER BY date DESC;",
+				{
+					replacements: { id: id },
+					type: QueryTypes.SELECT,
+				}
+			);
+		}
 		// Adds the product list  details to each order
 		const detailedOrders = await Promise.all(
 			orders.map(async (order) => {
