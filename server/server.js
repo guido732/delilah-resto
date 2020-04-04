@@ -313,6 +313,7 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 
 // Orders
 // TODO: Review why orders can't be logged
+// TODO: make all users able to access endpoint and get their orders, admins get all
 server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 	try {
 		// Gets a list of all orders
@@ -395,8 +396,8 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 	}
 });
 server.get("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
+	const id = req.params.id;
 	try {
-		const id = req.params.id;
 		const order = await sequelize.query(
 			"SELECT * FROM orders INNER JOIN users ON orders.user_id = users.user_id WHERE orders.order_id = :id;",
 			{
@@ -404,9 +405,7 @@ server.get("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 				type: QueryTypes.SELECT,
 			}
 		);
-		if (!order.length) {
-			res.status(404).send("Search didn't bring any results");
-		} else {
+		if (!!order.length) {
 			// Adds the product list details to the order
 			order[0].products = await sequelize.query(
 				"SELECT * FROM orders_products INNER JOIN products WHERE order_id = :id AND orders_products.product_id = products.product_id",
@@ -419,10 +418,76 @@ server.get("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 			delete order[0].is_admin;
 			delete order[0].disabled;
 			res.status(200).json(order);
+		} else {
+			res.status(404).send("Search didn't bring any results");
 		}
 	} catch (error) {
 		res.status(500).send(error);
 	}
+});
+// TODO: Move validOrderStatuses to utils module
+server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
+	const id = req.params.id;
+	const validOrderStatus = ["new", "confirmed", "preparing", "sending", "delivered", "canceled"];
+	const { orderStatus } = req.body;
+	try {
+		const order = await sequelize.query("SELECT * FROM orders WHERE order_id = :id;", {
+			replacements: { id: id },
+			type: QueryTypes.SELECT,
+		});
+		if (!!order.length) {
+			if (validOrderStatus.includes(orderStatus)) {
+				const update = await sequelize.query("UPDATE orders SET status = :status WHERE order_id = :id", {
+					replacements: {
+						id: id,
+						status: orderStatus,
+					},
+				});
+				res.status(200).send(`Order ${id} status was modified correctly`);
+			} else {
+				res.status(403).send("The state given for the product is not valid");
+			}
+		} else {
+			res.status(404).send("Search didn't bring any results");
+		}
+	} catch (error) {
+		console.log(error);
+
+		res.status(500).send(error);
+	}
+
+	//
+	//
+	//
+	// const id = req.params.id;
+	// try {
+	// 	const productFound = await getByParam("products", "product_id", productId);
+	// 	if (productFound) {
+	// 		const { name, price, imgUrl, description, disabled } = req.body;
+	// 		// Filters "", null or undefined props and puts remaining into new object
+	// 		const filteredProps = filterEmptyProps({ name, price, imgUrl, description, disabled });
+	// 		// Creates new object applying only the filtered Props over the previous ones
+	// 		const updatedProduct = { ...productFound, ...filteredProps };
+	// 		const update = await sequelize.query(
+	// 			"UPDATE products SET name = :name, price = :price, img_url = :imgUrl, description = :description, disabled = :disabled WHERE product_id = :id",
+	// 			{
+	// 				replacements: {
+	// 					id: productId,
+	// 					name: updatedProduct.name,
+	// 					price: updatedProduct.price,
+	// 					imgUrl: updatedProduct.img_url,
+	// 					description: updatedProduct.description,
+	// 					disabled: updatedProduct.disabled,
+	// 				},
+	// 			}
+	// 		);
+	// 		res.status(200).send(`Product with id ${productId} modified correctly`);
+	// 	} else {
+	// 		res.status(404).send("No product matches the ID provided");
+	// 	}
+	// } catch (error) {
+	// 	res.status(500).send("An error has ocurred");
+	// }
 });
 
 // Test Endpoints
