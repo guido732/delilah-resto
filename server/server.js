@@ -16,6 +16,8 @@ const { conf_db_host, conf_db_name, conf_user, conf_password, conf_port } = requ
 const Sequelize = require("sequelize");
 const { QueryTypes } = require("sequelize");
 const sequelize = new Sequelize(`mysql://${conf_user}:${conf_password}@${conf_db_host}:${conf_port}/${conf_db_name}`);
+// Custom Modules
+const utils = require("./utils");
 
 // Server Setup
 server.use(bp.json());
@@ -425,10 +427,8 @@ server.get("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 		res.status(500).send(error);
 	}
 });
-// TODO: Move validOrderStatuses to utils module
 server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 	const id = req.params.id;
-	const validOrderStatus = ["new", "confirmed", "preparing", "sending", "delivered", "canceled"];
 	const { orderStatus } = req.body;
 	try {
 		const order = await sequelize.query("SELECT * FROM orders WHERE order_id = :id;", {
@@ -436,7 +436,7 @@ server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 			type: QueryTypes.SELECT,
 		});
 		if (!!order.length) {
-			if (validOrderStatus.includes(orderStatus)) {
+			if (utils.validOrderStatus.includes(orderStatus)) {
 				const update = await sequelize.query("UPDATE orders SET status = :status WHERE order_id = :id", {
 					replacements: {
 						id: id,
