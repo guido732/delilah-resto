@@ -455,39 +455,6 @@ server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 
 		res.status(500).send(error);
 	}
-
-	//
-	//
-	//
-	// const id = req.params.id;
-	// try {
-	// 	const productFound = await getByParam("products", "product_id", productId);
-	// 	if (productFound) {
-	// 		const { name, price, imgUrl, description, disabled } = req.body;
-	// 		// Filters "", null or undefined props and puts remaining into new object
-	// 		const filteredProps = filterEmptyProps({ name, price, imgUrl, description, disabled });
-	// 		// Creates new object applying only the filtered Props over the previous ones
-	// 		const updatedProduct = { ...productFound, ...filteredProps };
-	// 		const update = await sequelize.query(
-	// 			"UPDATE products SET name = :name, price = :price, img_url = :imgUrl, description = :description, disabled = :disabled WHERE product_id = :id",
-	// 			{
-	// 				replacements: {
-	// 					id: productId,
-	// 					name: updatedProduct.name,
-	// 					price: updatedProduct.price,
-	// 					imgUrl: updatedProduct.img_url,
-	// 					description: updatedProduct.description,
-	// 					disabled: updatedProduct.disabled,
-	// 				},
-	// 			}
-	// 		);
-	// 		res.status(200).send(`Product with id ${productId} modified correctly`);
-	// 	} else {
-	// 		res.status(404).send("No product matches the ID provided");
-	// 	}
-	// } catch (error) {
-	// 	res.status(500).send("An error has ocurred");
-	// }
 });
 
 // Test Endpoints
