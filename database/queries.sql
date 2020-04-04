@@ -1,42 +1,43 @@
 -- Table Creation
 CREATE TABLE users (
-  userID INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT PRIMARY KEY AUTO_INCREMENT,
   user VARCHAR (60) NOT NULL,
   pass VARCHAR (60) NOT NULL,
-  fullName VARCHAR(60) NOT NULL,
+  full_name VARCHAR(60) NOT NULL,
   mail VARCHAR(60) NOT NULL,
   phone INT NOT NULL,
-  deliveryAddress VARCHAR (60) NOT NULL,
-  isAdmin BOOLEAN NOT NULL DEFAULT FALSE,
+  delivery_address VARCHAR (60) NOT NULL,
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   disabled BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE orders (
-  orderID INT PRIMARY KEY AUTO_INCREMENT,
+  order_id INT PRIMARY KEY AUTO_INCREMENT,
   STATUS VARCHAR(60) NOT NULL,
-  date DATE NOT NULL,
+  date DATETIME NOT NULL,
   description VARCHAR(150) NOT NULL,
-  paymentMethod VARCHAR (60) NOT NULL,
+  payment_method VARCHAR (60) NOT NULL,
   total FLOAT NOT NULL,
-  userID INT NOT NULL DEFAULT "0",
-  FOREIGN KEY(userID) REFERENCES users(userID)
+  user_id INT NOT NULL DEFAULT "0",
+  FOREIGN KEY(user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE products (
-  productID INT PRIMARY KEY AUTO_INCREMENT,
+  product_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR (60) NOT NULL,
   price FLOAT NOT NULL,
-  imgUrl VARCHAR(200) NOT NULL,
+  img_url VARCHAR(200) NOT NULL,
   description VARCHAR(150) NOT NULL,
   disabled BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE orders_products (
-  orderProdID INT PRIMARY KEY AUTO_INCREMENT,
-  orderID INT,
-  productID INT,
-  FOREIGN KEY(orderID) REFERENCES orders(orderID),
-  FOREIGN KEY(productID) REFERENCES products(productID)
+  order_prod_id INT PRIMARY KEY AUTO_INCREMENT,
+  order_id INT,
+  product_id INT,
+  product_amount INT NOT NULL,
+  FOREIGN KEY(order_id) REFERENCES orders(order_id),
+  FOREIGN KEY(product_id) REFERENCES products(product_id)
 );
 
 -- Populate users table
@@ -169,6 +170,77 @@ VALUES
     "Sánguche de pan frances con miilanesa suprema o ternera frita, huevo frito, lechuga, tomate y porción de papas fritas",
     FALSE
   );
+
+-- Populate orders table
+INSERT INTO
+  orders
+VALUES
+  (
+    NULL,
+    "delivered",
+    NOW(),
+    "1x HambDobPapas, 2x Coca600",
+    "card",
+    480,
+    1
+  ),
+  (
+    NULL,
+    "canceled",
+    NOW(),
+    "2x Coca600",
+    "card",
+    120,
+    3
+  ),
+  (
+    NULL,
+    "sending",
+    NOW(),
+    "2x Coca600",
+    "cash",
+    120,
+    1
+  ),
+  (
+    NULL,
+    "preparing",
+    NOW(),
+    "1x GdeMuzza",
+    "cash",
+    400,
+    3
+  ),
+  (
+    NULL,
+    "confirmed",
+    NOW(),
+    "1x GdeJmonAnana",
+    "card",
+    450,
+    2
+  ),
+  (
+    NULL,
+    "new",
+    NOW(),
+    "1x SgchMilaCaba",
+    "cash",
+    450,
+    1
+  );
+
+-- Populate orders_products table
+INSERT INTO
+  orders_products
+VALUES
+  (NULL, 1, 1, 1),
+  (NULL, 1, 4, 2),
+  (NULL, 2, 4, 2),
+  (NULL, 3, 4, 2),
+  (NULL, 4, 5, 1),
+  (NULL, 5, 6, 1),
+  (NULL, 6, 7, 1);
 
 -- Drop Tables
 -- DROP TABLE orders_products;
