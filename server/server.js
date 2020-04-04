@@ -346,13 +346,13 @@ server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 		} else {
 			res.status(404).send("Search didn't bring any results");
 		}
-		res.status(200).json(detailedOrders);
 	} catch (error) {
 		console.log(error);
-
 		res.status(500).send(error);
 	}
 });
+
+// Add validation -> can't add product if it's ID is disabled
 server.post("/v1/orders", validateToken, async (req, res) => {
 	const userId = req.tokenInfo.id;
 	const { data, paymentMethod } = req.body;
@@ -361,6 +361,7 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 			data.map((product) => getByParam("products", "product_id", product.productId))
 		);
 		const arrayValidation = (val) => !!val === true;
+
 		if (getOrderDetails.every(arrayValidation)) {
 			const orderData = async () => {
 				let total = 0;
@@ -380,7 +381,7 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 			data.forEach(async (product) => {
 				const order_products = await sequelize.query(
 					"INSERT INTO orders_products (order_id, product_id, product_amount) VALUES (:orderID, :productID, :productAmount)",
-					{ replacements: { orderID: order[0], productID: product.product_id, productAmount: product.amount } }
+					{ replacements: { orderID: order[0], productID: product.productId, productAmount: product.amount } }
 				);
 			});
 			console.log(`Order ${order[0]} was created`);
@@ -389,6 +390,8 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 			res.status(401).send("Invalid request, data provided is invalid");
 		}
 	} catch (error) {
+		console.log(error);
+
 		res.status(500).send(error);
 	}
 });
