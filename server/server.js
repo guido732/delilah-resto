@@ -360,9 +360,9 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 		const getOrderDetails = await Promise.all(
 			data.map((product) => getByParam("products", "product_id", product.productId))
 		);
-		const arrayValidation = (val) => !!val === true;
-
-		if (getOrderDetails.every(arrayValidation)) {
+		if (getOrderDetails.some((product) => product.disabled)) {
+			res.status(403).json("Some of the products selected is disabled or no longer available");
+		} else if (getOrderDetails.every((product) => !!product === true)) {
 			const orderData = async () => {
 				let total = 0;
 				let description = "";
