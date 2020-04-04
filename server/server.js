@@ -312,6 +312,7 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 });
 
 // Orders
+// TODO: Review why orders can't be logged
 server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 	try {
 		// Gets a list of all orders
@@ -351,8 +352,6 @@ server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 		res.status(500).send(error);
 	}
 });
-
-// Add validation -> can't add product if it's ID is disabled
 server.post("/v1/orders", validateToken, async (req, res) => {
 	const userId = req.tokenInfo.id;
 	const { data, paymentMethod } = req.body;
@@ -392,6 +391,36 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 	} catch (error) {
 		console.log(error);
 
+		res.status(500).send(error);
+	}
+});
+server.get("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
+	try {
+		const id = req.params.id;
+		const order = await sequelize.query(
+			"SELECT * FROM orders INNER JOIN users ON orders.user_id = users.user_id WHERE orders.order_id = :id;",
+			{
+				replacements: { id: id },
+				type: QueryTypes.SELECT,
+			}
+		);
+		if (!order.length) {
+			res.status(404).send("Search didn't bring any results");
+		} else {
+			// Adds the product list details to the order
+			order[0].products = await sequelize.query(
+				"SELECT * FROM orders_products INNER JOIN products WHERE order_id = :id AND orders_products.product_id = products.product_id",
+				{
+					replacements: { id: order[0].order_id },
+					type: QueryTypes.SELECT,
+				}
+			);
+			delete order[0].pass;
+			delete order[0].is_admin;
+			delete order[0].disabled;
+			res.status(200).json(order);
+		}
+	} catch (error) {
 		res.status(500).send(error);
 	}
 });
