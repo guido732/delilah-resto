@@ -314,13 +314,28 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 // Orders
 server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 	try {
+		// Gets a list of all orders
 		const orders = await sequelize.query(
 			"SELECT * FROM orders INNER JOIN users ON orders.user_id = users.user_id ORDER BY date DESC;",
 			{
 				type: QueryTypes.SELECT,
 			}
 		);
-		if (orders.length) {
+		// Adds the product list  details to each order
+		const detailedOrders = await Promise.all(
+			orders.map(async (order) => {
+				const orderProducts = await sequelize.query(
+					"SELECT * FROM orders_products INNER JOIN products WHERE order_id = :id AND orders_products.product_id = products.product_id",
+					{
+						replacements: { id: order.order_id },
+						type: QueryTypes.SELECT,
+					}
+				);
+				order.products = orderProducts;
+				return order;
+			})
+		);
+		if (!!detailedOrders.length) {
 			const filteredOrders = orders.map((user) => {
 				delete user.pass;
 				delete user.is_admin;
@@ -331,7 +346,10 @@ server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 		} else {
 			res.status(404).send("Search didn't bring any results");
 		}
+		res.status(200).json(detailedOrders);
 	} catch (error) {
+		console.log(error);
+
 		res.status(500).send(error);
 	}
 });
@@ -362,7 +380,7 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 			data.forEach(async (product) => {
 				const order_products = await sequelize.query(
 					"INSERT INTO orders_products (order_id, product_id, product_amount) VALUES (:orderID, :productID, :productAmount)",
-					{ replacements: { orderID: order[0], productID: product.productID, productAmount: product.amount } }
+					{ replacements: { orderID: order[0], productID: product.product_id, productAmount: product.amount } }
 				);
 			});
 			console.log(`Order ${order[0]} was created`);
@@ -415,6 +433,9 @@ async function getByParam(table = "", tableParam = "", inputParam = "") {
 		type: QueryTypes.SELECT,
 	});
 	return !!searchResult.length ? searchResult[0] : false;
+}
+function getOrderDetails(orderId) {
+	return true;
 }
 
 // Generic error detection
