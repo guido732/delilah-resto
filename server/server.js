@@ -27,7 +27,7 @@ server.listen("3000", () => {
 // PRODUCTS
 server.get("/v1/products", validateToken, async (req, res) => {
 	const products = await sequelize.query("SELECT * FROM products WHERE disabled = FALSE", {
-		type: QueryTypes.SELECT
+		type: QueryTypes.SELECT,
 	});
 	res.status(200).json(products);
 });
@@ -35,7 +35,7 @@ server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
 	const { name, price, imgUrl, description } = req.body;
 	if (name && price && imgUrl && description) {
 		const insert = await sequelize.query(
-			"INSERT INTO products (name, price, imgUrl, description) VALUES (:name, :price, :imgUrl, :description)",
+			"INSERT INTO products (name, price, img_url, description) VALUES (:name, :price, :imgUrl, :description)",
 			{ replacements: { name, price, imgUrl, description } }
 		);
 		console.log("Product Added to database", insert);
@@ -46,45 +46,49 @@ server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
 });
 server.get("/v1/products/:id", validateToken, async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByParam("products", "productID", productId);
+	const productFound = await getByParam("products", "product_id", productId);
 	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
 });
 server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
-	const productFound = await getByParam("products", "productID", productId);
-	if (productFound) {
-		const { name, price, imgUrl, description, disabled } = req.body;
-		// Filters "", null or undefined props and puts remaining into new object
-		const filteredProps = filterEmptyProps({ name, price, imgUrl, description, disabled });
-		// Creates new object applying only the filtered Props over the previous ones
-		const updatedProduct = { ...productFound, ...filteredProps };
-		const update = await sequelize.query(
-			`UPDATE products SET name = :name, price = :price, imgUrl = :imgUrl, description = :description, disabled = :disabled WHERE productID = :id`,
-			{
-				replacements: {
-					id: productId,
-					name: updatedProduct.name,
-					price: updatedProduct.price,
-					imgUrl: updatedProduct.imgUrl,
-					description: updatedProduct.description,
-					disabled: disabled
+	try {
+		const productFound = await getByParam("products", "product_id", productId);
+		if (productFound) {
+			const { name, price, imgUrl, description, disabled } = req.body;
+			// Filters "", null or undefined props and puts remaining into new object
+			const filteredProps = filterEmptyProps({ name, price, imgUrl, description, disabled });
+			// Creates new object applying only the filtered Props over the previous ones
+			const updatedProduct = { ...productFound, ...filteredProps };
+			const update = await sequelize.query(
+				"UPDATE products SET name = :name, price = :price, img_url = :imgUrl, description = :description, disabled = :disabled WHERE product_id = :id",
+				{
+					replacements: {
+						id: productId,
+						name: updatedProduct.name,
+						price: updatedProduct.price,
+						imgUrl: updatedProduct.img_url,
+						description: updatedProduct.description,
+						disabled: updatedProduct.disabled,
+					},
 				}
-			}
-		);
-		res.status(200).send(`Product with id ${productId} modified correctly`);
-	} else {
-		res.status(404).send("No product matches the ID provided");
+			);
+			res.status(200).send(`Product with id ${productId} modified correctly`);
+		} else {
+			res.status(404).send("No product matches the ID provided");
+		}
+	} catch (error) {
+		res.status(500).send("An error has ocurred");
 	}
 });
 server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 	const productId = req.params.id;
 	try {
-		const productFound = await getByParam("products", "productID", productId);
+		const productFound = await getByParam("products", "product_id", productId);
 		if (productFound) {
-			const update = await sequelize.query(`UPDATE products SET disabled = true WHERE productID = :id`, {
+			const update = await sequelize.query("UPDATE products SET disabled = true WHERE product_id = :id", {
 				replacements: {
-					id: productId
-				}
+					id: productId,
+				},
 			});
 			res.status(200).send(`Product with id ${productId} was disabled correctly`);
 		}
@@ -95,35 +99,43 @@ server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 
 // USERS
 server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
-	const users = await sequelize.query("SELECT * FROM users", {
-		type: QueryTypes.SELECT
-	});
-	const filteredUsers = users.map(user => {
-		delete user.pass;
-		return user;
-	});
-	res.status(200).json(filteredUsers);
+	try {
+		const users = await sequelize.query("SELECT * FROM users", {
+			type: QueryTypes.SELECT,
+		});
+		const filteredUsers = users.map((user) => {
+			delete user.pass;
+			return user;
+		});
+		res.status(200).json(filteredUsers);
+	} catch (error) {
+		res.status(500).send("An error has ocurred");
+	}
 });
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
-	const existingUsername = await getByParam("users", "user", username);
-	const existingEmail = await getByParam("users", "mail", email);
-	if (existingUsername) {
-		res.status(409).json("Username already exists, please pick another");
-		return;
-	}
-	if (existingEmail) {
-		res.status(409).json("Email already exists, please pick another");
-		return;
-	}
-	if ((username && password && email && deliveryAddress, fullName, phone)) {
-		const insert = await sequelize.query(
-			"INSERT INTO users (user, pass, fullName, mail, phone, deliveryAddress) VALUES (:username, :password, :fullName, :email, :phone, :deliveryAddress)",
-			{ replacements: { username, password, fullName, email, phone, deliveryAddress } }
-		);
-		res.status(200).json("User correctly added to database");
-	} else {
-		res.status(400).send("Error validating input data");
+	try {
+		const existingUsername = await getByParam("users", "user", username);
+		const existingEmail = await getByParam("users", "mail", email);
+		if (existingUsername) {
+			res.status(409).json("Username already exists, please pick another");
+			return;
+		}
+		if (existingEmail) {
+			res.status(409).json("Email already exists, please pick another");
+			return;
+		}
+		if ((username && password && email && deliveryAddress, fullName, phone)) {
+			const insert = await sequelize.query(
+				"INSERT INTO users (user, pass, full_name, mail, phone, delivery_address) VALUES (:username, :password, :fullName, :email, :phone, :deliveryAddress)",
+				{ replacements: { username, password, fullName, email, phone, deliveryAddress } }
+			);
+			res.status(200).json("User correctly added to database");
+		} else {
+			res.status(400).send("Error validating input data");
+		}
+	} catch (error) {
+		res.status(500).send("An error has ocurred");
 	}
 });
 server.get("/v1/users/login", async (req, res) => {
@@ -137,9 +149,9 @@ server.get("/v1/users/login", async (req, res) => {
 		} else {
 			const token = generateToken({
 				user: foundUser.user,
-				id: foundUser.userID,
-				isAdmin: foundUser.isAdmin,
-				isDisabled: foundUser.disabled
+				id: foundUser.user_id,
+				isAdmin: foundUser.is_admin,
+				isDisabled: foundUser.disabled,
 			});
 			res.status(200).json(token);
 		}
@@ -149,9 +161,9 @@ server.get("/v1/users/login", async (req, res) => {
 });
 server.get("/v1/users/active", validateToken, async (req, res) => {
 	const token = req.tokenInfo;
-	const userID = token.id;
+	const userId = token.id;
 	try {
-		const foundUser = await getByParam("users", "userID", userID);
+		const foundUser = await getByParam("users", "user_id", userId);
 		if (foundUser) {
 			const { user, fullName, mail, phone, deliveryAddress } = foundUser;
 			const userData = { user, fullName, mail, phone, deliveryAddress };
@@ -169,9 +181,10 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 	const username = token.user;
 	try {
 		const foundUser = await getByParam("users", "user", username);
-		const userID = foundUser.userID;
+		const userId = foundUser.user_id;
 		if (foundUser) {
 			const { user, fullName, mail, phone, deliveryAddress } = req.body;
+			// Validate if requested name & email already exist for any other user than this one
 			const existingUsername = await getByParam("users", "user", user);
 			const existingEmail = await getByParam("users", "mail", mail);
 			if (existingUsername) {
@@ -187,19 +200,19 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 			// Creates new object applying only the filtered Props over the previous ones
 			const updatedUser = { ...foundUser, ...filteredProps };
 			const update = await sequelize.query(
-				`UPDATE users SET user = :user, fullName = :fullName, mail = :mail, phone = :phone, deliveryAddress = :deliveryAddress WHERE userID = :userID`,
+				"UPDATE users SET user = :user, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress WHERE user_id = :userId",
 				{
 					replacements: {
 						user: updatedUser.user,
-						fullName: updatedUser.fullName,
+						fullName: updatedUser.full_name,
 						mail: updatedUser.mail,
 						phone: updatedUser.phone,
-						deliveryAddress: updatedUser.deliveryAddress,
-						userID: userID
-					}
+						deliveryAddress: updatedUser.delivery_address,
+						userId: userId,
+					},
 				}
 			);
-			res.status(200).send(`User was modified correctly`);
+			res.status(200).send("User was modified correctly");
 		} else {
 			res.status(404).json("User not found");
 		}
@@ -209,13 +222,17 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 });
 server.delete("/v1/users/active", validateToken, async (req, res) => {
 	const token = req.tokenInfo;
-	const userID = token.id;
-	const update = await sequelize.query(`UPDATE users SET disabled = true WHERE userID = :userID`, {
-		replacements: {
-			userID: userID
-		}
-	});
-	res.status(200).json("User account disabled");
+	const userId = token.id;
+	try {
+		const update = await sequelize.query("UPDATE users SET disabled = true WHERE user_id = :userId", {
+			replacements: {
+				userId: userId,
+			},
+		});
+		res.status(200).json("User account disabled");
+	} catch (error) {
+		res.status(500).json(error);
+	}
 });
 server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
@@ -234,7 +251,7 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
 		const foundUser = await getByParam("users", "user", username);
-		const userID = foundUser.userID;
+		const userId = foundUser.user_id;
 		if (foundUser) {
 			const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
 			const existingUsername = await getByParam("users", "user", user);
@@ -252,7 +269,7 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 			// Creates new object applying only the filtered Props over the previous ones
 			const updatedUser = { ...foundUser, ...filteredProps };
 			const update = await sequelize.query(
-				`UPDATE users SET user = :user, pass = :pass, fullName = :fullName, mail = :mail, phone = :phone, deliveryAddress = :deliveryAddress, disabled = :disabled WHERE userID = :userID`,
+				`UPDATE users SET user = :user, pass = :pass, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress, disabled = :disabled WHERE user_id = :userId`,
 				{
 					replacements: {
 						user: updatedUser.user,
@@ -261,9 +278,9 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 						mail: updatedUser.mail,
 						phone: updatedUser.phone,
 						deliveryAddress: updatedUser.deliveryAddress,
-						userID: userID,
-						disabled: disabled
-					}
+						userId: userId,
+						disabled: updatedUser.disabled,
+					},
 				}
 			);
 			res.status(200).send(`User ${username} was modified correctly`);
@@ -278,19 +295,18 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 	const username = req.params.username;
 	try {
 		const foundUser = await getByParam("users", "user", username);
-		const userID = foundUser.userID;
+		const userId = foundUser.user_id;
 		if (foundUser) {
-			const update = await sequelize.query(`UPDATE users SET disabled = true WHERE userID = :userID`, {
+			const update = await sequelize.query("UPDATE users SET disabled = true WHERE user_id = :userId", {
 				replacements: {
-					userID: userID
-				}
+					userId: userId,
+				},
 			});
 			res.status(200).send(`User ${username} was disabled correctly`);
 		} else {
 			res.status(404).json("User not found");
 		}
 	} catch (error) {
-		console.log(error);
 		res.status(500).json(error);
 	}
 });
@@ -299,15 +315,15 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 server.get("/v1/orders", validateToken, isAdmin, async (req, res) => {
 	try {
 		const orders = await sequelize.query(
-			"SELECT * FROM orders INNER JOIN users ON orders.userID = users.userID ORDER BY date DESC;",
+			"SELECT * FROM orders INNER JOIN users ON orders.user_id = users.user_id ORDER BY date DESC;",
 			{
-				type: QueryTypes.SELECT
+				type: QueryTypes.SELECT,
 			}
 		);
 		if (orders.length) {
-			const filteredOrders = orders.map(user => {
+			const filteredOrders = orders.map((user) => {
 				delete user.pass;
-				delete user.isAdmin;
+				delete user.is_admin;
 				delete user.disabled;
 				return user;
 			});
@@ -324,14 +340,14 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 	const { data, paymentMethod } = req.body;
 	try {
 		const getOrderDetails = await Promise.all(
-			data.map(product => getByParam("products", "productID", product.productID))
+			data.map((product) => getByParam("products", "product_id", product.productId))
 		);
-		const arrayValidation = val => !!val === true;
+		const arrayValidation = (val) => !!val === true;
 		if (getOrderDetails.every(arrayValidation)) {
 			const orderData = async () => {
 				let total = 0;
 				let description = "";
-				(await getOrderDetails).forEach((product, index) => {
+				getOrderDetails.forEach((product, index) => {
 					total += product.price * data[index].amount;
 					description += `${data[index].amount}x ${product.name}, `;
 				});
@@ -340,12 +356,12 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 			};
 			const [total, description] = await orderData();
 			const order = await sequelize.query(
-				"INSERT INTO orders (status, date, description, paymentMethod, total, userID) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
+				"INSERT INTO orders (status, date, description, payment_method, total, user_id) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
 				{ replacements: { status: "new", date: new Date(), description, paymentMethod, total, userId } }
 			);
-			data.forEach(async product => {
+			data.forEach(async (product) => {
 				const order_products = await sequelize.query(
-					"INSERT INTO orders_products (orderID, productID, productAmount) VALUES (:orderID, :productID, :productAmount)",
+					"INSERT INTO orders_products (order_id, product_id, product_amount) VALUES (:orderID, :productID, :productAmount)",
 					{ replacements: { orderID: order[0], productID: product.productID, productAmount: product.amount } }
 				);
 			});
@@ -356,7 +372,6 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 		}
 	} catch (error) {
 		res.status(500).send(error);
-		console.log(error);
 	}
 });
 
@@ -375,7 +390,7 @@ async function validateToken(req, res, next) {
 	const token = req.headers.authorization.split(" ")[1];
 	try {
 		const verification = jwt.verify(token, signature);
-		const foundUser = await getByParam("users", "userID", verification.id);
+		const foundUser = await getByParam("users", "user_id", verification.id);
 		const isDisabled = !!foundUser.disabled;
 		if (isDisabled) {
 			res.status(401).send("Invalid request, user account is disabled");
@@ -391,13 +406,13 @@ function isAdmin(req, res, next) {
 	req.tokenInfo.isAdmin ? next() : res.status(401).json("Operation forbidden, not an admin");
 }
 function filterEmptyProps(inputObject) {
-	Object.keys(inputObject).forEach(key => !inputObject[key] && delete inputObject[key]);
+	Object.keys(inputObject).forEach((key) => !inputObject[key] && delete inputObject[key]);
 	return inputObject;
 }
 async function getByParam(table = "", tableParam = "", inputParam = "") {
 	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
-		type: QueryTypes.SELECT
+		type: QueryTypes.SELECT,
 	});
 	return !!searchResult.length ? searchResult[0] : false;
 }
