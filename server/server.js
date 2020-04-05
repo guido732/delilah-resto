@@ -33,15 +33,19 @@ server.get("/v1/products", validateToken, async (req, res) => {
 });
 server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
 	const { name, price, imgUrl, description } = req.body;
-	if (name && price && imgUrl && description) {
-		const insert = await sequelize.query(
-			"INSERT INTO products (name, price, img_url, description) VALUES (:name, :price, :imgUrl, :description)",
-			{ replacements: { name, price, imgUrl, description } }
-		);
-		console.log("Product Added to database", insert);
-		res.status(200).json(insert);
-	} else {
-		res.status(400).send("Error validating input data");
+	try {
+		if (name && price && imgUrl && description) {
+			const insert = await sequelize.query(
+				"INSERT INTO products (name, price, img_url, description) VALUES (:name, :price, :imgUrl, :description)",
+				{ replacements: { name, price, imgUrl, description } }
+			);
+			console.log("Product Added to database", insert);
+			res.status(200).json(insert);
+		} else {
+			res.status(400).send("Error validating input data");
+		}
+	} catch (error) {
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.get("/v1/products/:id", validateToken, async (req, res) => {
@@ -77,7 +81,7 @@ server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 			res.status(404).send("No product matches the ID provided");
 		}
 	} catch (error) {
-		res.status(500).send("An error has ocurred");
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
@@ -98,7 +102,6 @@ server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 });
 
 // USERS
-
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
 	try {
@@ -122,18 +125,17 @@ server.post("/v1/users", async (req, res) => {
 			res.status(400).send("Error validating input data");
 		}
 	} catch (error) {
-		res.status(500).send("An error has ocurred");
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.get("/v1/users/login", async (req, res) => {
-	const { user, pass } = req.body;
+	const { user, mail, pass } = req.body;
 	try {
 		const foundUser = await getByParam("users", "user", user);
-		if (foundUser.pass !== pass) {
-			res.status(400).send("Invalid username/password supplied");
-		} else if (foundUser.disabled) {
+		const foundEmail = await getByParam("users", "mail", mail);
+		if (foundUser.disabled || foundEmail.disabled) {
 			res.status(401).send("Invalid request, user account is disabled");
-		} else {
+		} else if (foundUser.pass === pass) {
 			const token = generateToken({
 				user: foundUser.user,
 				id: foundUser.user_id,
@@ -141,9 +143,19 @@ server.get("/v1/users/login", async (req, res) => {
 				isDisabled: foundUser.disabled,
 			});
 			res.status(200).json(token);
+		} else if (foundEmail.pass === pass) {
+			const token = generateToken({
+				user: foundEmail.user,
+				id: foundEmail.user_id,
+				isAdmin: foundEmail.is_admin,
+				isDisabled: foundEmail.disabled,
+			});
+			res.status(200).json(token);
+		} else {
+			res.status(400).send("Invalid username/password supplied");
 		}
 	} catch (error) {
-		res.status(500).json(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.get("/v1/users", validateToken, async (req, res) => {
@@ -170,9 +182,7 @@ server.get("/v1/users", validateToken, async (req, res) => {
 			res.status(404).json("User not found");
 		}
 	} catch (error) {
-		console.log(error);
-
-		res.status(500).json(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.put("/v1/users", validateToken, async (req, res) => {
@@ -220,9 +230,7 @@ server.put("/v1/users", validateToken, async (req, res) => {
 			res.status(404).json("User not found");
 		}
 	} catch (error) {
-		console.log(error);
-
-		res.status(500).json(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.delete("/v1/users", validateToken, async (req, res) => {
@@ -236,20 +244,21 @@ server.delete("/v1/users", validateToken, async (req, res) => {
 		});
 		res.status(200).json("User account disabled");
 	} catch (error) {
-		res.status(500).json(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.get("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	const username = req.params.username;
 	try {
-		const foundUser = await getByParam("users", "user", username);
-		if (foundUser) {
-			res.status(200).json(foundUser);
+		let foundUser = await getByParam("users", "user", username, true);
+		if (foundUser.length) {
+			filteredUser = filterSensitiveData(foundUser, ["pass"]);
+			res.status(200).json(filteredUser);
 		} else {
 			res.status(404).json("User not found");
 		}
 	} catch (error) {
-		res.status(500).json(error);
+		res.status(500).json({ error: `An error has ocurred: ${error}` });
 	}
 });
 server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
@@ -257,54 +266,52 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	try {
 		const foundUser = await getByParam("users", "user", username);
 		const userId = foundUser.user_id;
-		if (!foundUser) {
-			res.status(404).json("User not found");
-			return;
-		}
-		const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
-		// Finds all usernames/mails that match the param provided
-		const existingUsername = await getByParam("users", "user", user, true);
-		const existingEmail = await getByParam("users", "mail", mail, true);
+		if (foundUser) {
+			const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
+			// Finds all usernames/mails that match the param provided
+			const existingUsername = await getByParam("users", "user", user, true);
+			const existingEmail = await getByParam("users", "mail", mail, true);
 
-		// Finds if any of the previously found IDs match the user-to-modify ID or if they belong to a different user
-		const repeatedUsername =
-			existingUsername && existingUsername.map((user) => compareSameUserId(userId, user.user_id));
-		const repeatedEmail = existingEmail && existingEmail.map((user) => compareSameUserId(userId, user.user_id));
+			// Finds if any of the previously found IDs match the user-to-modify ID or if they belong to a different user
+			const repeatedUsername =
+				existingUsername && existingUsername.map((user) => compareSameUserId(userId, user.user_id));
+			const repeatedEmail = existingEmail && existingEmail.map((user) => compareSameUserId(userId, user.user_id));
 
-		// If said values don't match ID -> the user/email is taken by another user and can't be changed to that
-		if (repeatedUsername && repeatedUsername.some((value) => value === true)) {
-			res.status(409).json("Username already exists, please pick another");
-			return;
-		}
-		if (repeatedEmail && repeatedEmail.some((value) => value === true)) {
-			res.status(409).json("Email already exists, please pick another");
-			return;
-		}
-
-		// Filters "", null or undefined props and puts remaining into new object
-		const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress, disabled });
-		// Creates new object applying only the filtered Props over the previous ones
-		const updatedUser = { ...foundUser, ...filteredProps };
-		const update = await sequelize.query(
-			`UPDATE users SET user = :user, pass = :pass, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress, disabled = :disabled WHERE user_id = :userId`,
-			{
-				replacements: {
-					user: updatedUser.user,
-					pass: updatedUser.pass,
-					fullName: updatedUser.fullName,
-					mail: updatedUser.mail,
-					phone: updatedUser.phone,
-					deliveryAddress: updatedUser.deliveryAddress,
-					userId: userId,
-					disabled: updatedUser.disabled,
-				},
+			// If said values don't match ID -> the user/email is taken by another user and can't be changed to that
+			if (repeatedUsername && repeatedUsername.some((value) => value === true)) {
+				res.status(409).json("Username already exists, please pick another");
+				return;
 			}
-		);
-		res.status(200).send(`User ${username} was modified correctly`);
-	} catch (error) {
-		console.log(error);
+			if (repeatedEmail && repeatedEmail.some((value) => value === true)) {
+				res.status(409).json("Email already exists, please pick another");
+				return;
+			}
 
-		res.status(500).json(error);
+			// Filters "", null or undefined props and puts remaining into new object
+			const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress, disabled });
+			// Creates new object applying only the filtered Props over the previous ones
+			const updatedUser = { ...foundUser, ...filteredProps };
+			const update = await sequelize.query(
+				`UPDATE users SET user = :user, pass = :pass, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress, disabled = :disabled WHERE user_id = :userId`,
+				{
+					replacements: {
+						user: updatedUser.user,
+						pass: updatedUser.pass,
+						fullName: updatedUser.fullName,
+						mail: updatedUser.mail,
+						phone: updatedUser.phone,
+						deliveryAddress: updatedUser.deliveryAddress,
+						userId: userId,
+						disabled: updatedUser.disabled,
+					},
+				}
+			);
+			res.status(200).send(`User ${username} was modified correctly`);
+		} else {
+			res.status(404).json("User not found");
+		}
+	} catch (error) {
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
@@ -323,7 +330,7 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 		});
 		res.status(200).send(`User ${username} was disabled correctly`);
 	} catch (error) {
-		res.status(500).json(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 
@@ -366,19 +373,13 @@ server.get("/v1/orders", validateToken, async (req, res) => {
 		);
 
 		if (!!detailedOrders.length) {
-			const filteredOrders = orders.map((user) => {
-				delete user.pass;
-				delete user.is_admin;
-				delete user.disabled;
-				return user;
-			});
+			const filteredOrders = filterSensitiveData(orders, ["pass", "is_admin", "disabled"]);
 			res.status(200).json(filteredOrders);
 		} else {
 			res.status(404).send("Search didn't bring any results");
 		}
 	} catch (error) {
-		console.log(error);
-		res.status(500).send(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.post("/v1/orders", validateToken, async (req, res) => {
@@ -420,12 +421,10 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 			console.log(`Order ${order[0]} was created`);
 			res.status(200).json("Order created successfully");
 		} else {
-			res.status(401).send("Invalid request, data provided is invalid");
+			res.status(400).send("Error validating input data");
 		}
 	} catch (error) {
-		console.log(error);
-
-		res.status(500).send(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.get("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
@@ -455,7 +454,7 @@ server.get("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 			res.status(404).send("Search didn't bring any results");
 		}
 	} catch (error) {
-		res.status(500).send(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
@@ -483,9 +482,7 @@ server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 			res.status(404).send("Search didn't bring any results");
 		}
 	} catch (error) {
-		console.log(error);
-
-		res.status(500).send(error);
+		res.status(500).json("An error has ocurred:", error);
 	}
 });
 
@@ -505,17 +502,17 @@ async function validateToken(req, res, next) {
 		const foundUser = await getByParam("users", "user_id", verification.id);
 		const isDisabled = !!foundUser.disabled;
 		if (isDisabled) {
-			res.status(401).send("Invalid request, user account is disabled");
+			res.status(401).json("Unauthorized - User account is disabled");
 		} else {
 			req.tokenInfo = verification;
 			next();
 		}
 	} catch (e) {
-		res.status(401).json("Invalid Token");
+		res.status(401).json("Unauthorized - Invalid Token");
 	}
 }
 function isAdmin(req, res, next) {
-	req.tokenInfo.isAdmin ? next() : res.status(401).json("Operation forbidden, not an admin");
+	req.tokenInfo.isAdmin ? next() : res.status(401).json("Unauthorized - Not an admin");
 }
 function filterEmptyProps(inputObject) {
 	Object.keys(inputObject).forEach((key) => !inputObject[key] && delete inputObject[key]);
@@ -536,6 +533,14 @@ function compareSameUserId(baseUserId, foundUserId) {
 	} else {
 		return false;
 	}
+}
+function filterSensitiveData(userArray, filters) {
+	// const test =
+
+	return userArray.map((user) => {
+		filters.forEach((filter) => delete user[filter]);
+		return user;
+	});
 }
 
 // Generic error detection
