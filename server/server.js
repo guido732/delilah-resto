@@ -255,50 +255,50 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	try {
 		const foundUser = await getByParam("users", "user", username);
 		const userId = foundUser.user_id;
-		if (foundUser) {
-			const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
-			// Finds all usernames/mails that match the param provided
-			const existingUsername = await getByParam("users", "user", user, true);
-			const existingEmail = await getByParam("users", "mail", mail, true);
-
-			// Finds if any of the previously found IDs match the user-to-modify ID or if they belong to a different user
-			const repeatedUsername =
-				existingUsername && existingUsername.map((user) => compareSameUserId(userId, user.user_id));
-			const repeatedEmail = existingEmail && existingEmail.map((user) => compareSameUserId(userId, user.user_id));
-
-			// If said values don't match ID -> the user/email is taken by another user and can't be changed to that
-			if (repeatedUsername && repeatedUsername.some((value) => value === true)) {
-				res.status(409).json("Username already exists, please pick another");
-				return;
-			}
-			if (repeatedEmail && repeatedEmail.some((value) => value === true)) {
-				res.status(409).json("Email already exists, please pick another");
-				return;
-			}
-
-			// Filters "", null or undefined props and puts remaining into new object
-			const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress, disabled });
-			// Creates new object applying only the filtered Props over the previous ones
-			const updatedUser = { ...foundUser, ...filteredProps };
-			const update = await sequelize.query(
-				`UPDATE users SET user = :user, pass = :pass, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress, disabled = :disabled WHERE user_id = :userId`,
-				{
-					replacements: {
-						user: updatedUser.user,
-						pass: updatedUser.pass,
-						fullName: updatedUser.fullName,
-						mail: updatedUser.mail,
-						phone: updatedUser.phone,
-						deliveryAddress: updatedUser.deliveryAddress,
-						userId: userId,
-						disabled: updatedUser.disabled,
-					},
-				}
-			);
-			res.status(200).send(`User ${username} was modified correctly`);
-		} else {
+		if (!foundUser) {
 			res.status(404).json("User not found");
+			return;
 		}
+		const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
+		// Finds all usernames/mails that match the param provided
+		const existingUsername = await getByParam("users", "user", user, true);
+		const existingEmail = await getByParam("users", "mail", mail, true);
+
+		// Finds if any of the previously found IDs match the user-to-modify ID or if they belong to a different user
+		const repeatedUsername =
+			existingUsername && existingUsername.map((user) => compareSameUserId(userId, user.user_id));
+		const repeatedEmail = existingEmail && existingEmail.map((user) => compareSameUserId(userId, user.user_id));
+
+		// If said values don't match ID -> the user/email is taken by another user and can't be changed to that
+		if (repeatedUsername && repeatedUsername.some((value) => value === true)) {
+			res.status(409).json("Username already exists, please pick another");
+			return;
+		}
+		if (repeatedEmail && repeatedEmail.some((value) => value === true)) {
+			res.status(409).json("Email already exists, please pick another");
+			return;
+		}
+
+		// Filters "", null or undefined props and puts remaining into new object
+		const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress, disabled });
+		// Creates new object applying only the filtered Props over the previous ones
+		const updatedUser = { ...foundUser, ...filteredProps };
+		const update = await sequelize.query(
+			`UPDATE users SET user = :user, pass = :pass, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress, disabled = :disabled WHERE user_id = :userId`,
+			{
+				replacements: {
+					user: updatedUser.user,
+					pass: updatedUser.pass,
+					fullName: updatedUser.fullName,
+					mail: updatedUser.mail,
+					phone: updatedUser.phone,
+					deliveryAddress: updatedUser.deliveryAddress,
+					userId: userId,
+					disabled: updatedUser.disabled,
+				},
+			}
+		);
+		res.status(200).send(`User ${username} was modified correctly`);
 	} catch (error) {
 		console.log(error);
 
@@ -310,16 +310,16 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 	try {
 		const foundUser = await getByParam("users", "user", username);
 		const userId = foundUser.user_id;
-		if (foundUser) {
-			const update = await sequelize.query("UPDATE users SET disabled = true WHERE user_id = :userId", {
-				replacements: {
-					userId: userId,
-				},
-			});
-			res.status(200).send(`User ${username} was disabled correctly`);
-		} else {
+		if (!foundUser) {
 			res.status(404).json("User not found");
+			return;
 		}
+		const update = await sequelize.query("UPDATE users SET disabled = true WHERE user_id = :userId", {
+			replacements: {
+				userId: userId,
+			},
+		});
+		res.status(200).send(`User ${username} was disabled correctly`);
 	} catch (error) {
 		res.status(500).json(error);
 	}
@@ -347,6 +347,7 @@ server.get("/v1/orders", validateToken, async (req, res) => {
 				}
 			);
 		}
+
 		// Adds the product list  details to each order
 		const detailedOrders = await Promise.all(
 			orders.map(async (order) => {
@@ -361,6 +362,7 @@ server.get("/v1/orders", validateToken, async (req, res) => {
 				return order;
 			})
 		);
+
 		if (!!detailedOrders.length) {
 			const filteredOrders = orders.map((user) => {
 				delete user.pass;
