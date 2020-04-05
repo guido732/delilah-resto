@@ -386,8 +386,9 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 		const getOrderDetails = await Promise.all(
 			data.map((product) => getByParam("products", "product_id", product.productId))
 		);
+
 		if (getOrderDetails.some((product) => product.disabled)) {
-			res.status(403).json("Some of the products selected is disabled or no longer available");
+			res.status(403).json("Some of the products selected are disabled or no longer available");
 		} else if (getOrderDetails.every((product) => !!product === true)) {
 			const orderData = async () => {
 				let total = 0;
@@ -399,17 +400,21 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 				description = description.substring(0, description.length - 2);
 				return [total, description];
 			};
+
 			const [total, description] = await orderData();
+
 			const order = await sequelize.query(
 				"INSERT INTO orders (status, date, description, payment_method, total, user_id) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
 				{ replacements: { status: "new", date: new Date(), description, paymentMethod, total, userId } }
 			);
+
 			data.forEach(async (product) => {
 				const order_products = await sequelize.query(
 					"INSERT INTO orders_products (order_id, product_id, product_amount) VALUES (:orderID, :productID, :productAmount)",
 					{ replacements: { orderID: order[0], productID: product.productId, productAmount: product.amount } }
 				);
 			});
+
 			console.log(`Order ${order[0]} was created`);
 			res.status(200).json("Order created successfully");
 		} else {
@@ -459,6 +464,7 @@ server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 			replacements: { id: id },
 			type: QueryTypes.SELECT,
 		});
+
 		if (!!order.length) {
 			if (utils.validOrderStatus.includes(orderStatus)) {
 				const update = await sequelize.query("UPDATE orders SET status = :status WHERE order_id = :id", {
@@ -487,8 +493,6 @@ server.get("/v1/validate-token", validateToken, async (req, res) => {
 });
 
 // Functions & Middlewares
-// TODO modificar dónde se envía/recibe token
-// Modificar en endpoints de postman también
 function generateToken(info) {
 	return jwt.sign(info, signature, { expiresIn: "1h" });
 }
@@ -521,15 +525,6 @@ async function getByParam(table, tableParam = "TRUE", inputParam = "TRUE", all =
 		type: QueryTypes.SELECT,
 	});
 	return !!searchResults.length ? (all ? searchResults : searchResults[0]) : false;
-}
-// async function setByParam(operation, table, tableParam = "TRUE", inputParam = "TRUE", all = false) {
-// 	const searchResults = await sequelize.query(`${operation} * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
-// 		replacements: { replacementParam: inputParam },
-// 	});
-// 	return !!searchResults.length ? (all ? searchResults : searchResults[0]) : false;
-// }
-function getOrderDetails(orderId) {
-	return true;
 }
 function compareSameUserId(baseUserId, foundUserId) {
 	if (foundUserId && baseUserId !== foundUserId) {
