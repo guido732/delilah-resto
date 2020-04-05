@@ -98,18 +98,7 @@ server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 });
 
 // USERS
-server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
-	try {
-		const users = await getByParam("users", true, true, true);
-		const filteredUsers = users.map((user) => {
-			delete user.pass;
-			return user;
-		});
-		res.status(200).json(filteredUsers);
-	} catch (error) {
-		res.status(500).send("An error has ocurred");
-	}
-});
+
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
 	try {
@@ -157,23 +146,36 @@ server.get("/v1/users/login", async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-server.get("/v1/users/active", validateToken, async (req, res) => {
-	const token = req.tokenInfo;
-	const userId = token.id;
+server.get("/v1/users", validateToken, async (req, res) => {
+	const userId = req.tokenInfo.id;
+	const isAdmin = req.tokenInfo.isAdmin;
 	try {
-		const foundUser = await getByParam("users", "user_id", userId);
-		if (foundUser) {
-			const { user, fullName, mail, phone, deliveryAddress } = foundUser;
-			const userData = { user, fullName, mail, phone, deliveryAddress };
-			res.status(200).json(userData);
+		let filteredUsers = [];
+		if (isAdmin) {
+			const foundUsers = await getByParam("users", true, true, true);
+			filteredUsers = foundUsers.map((user) => {
+				delete user.pass;
+				return user;
+			});
+		} else {
+			const foundUser = await getByParam("users", "user_id", userId, true);
+			filteredUsers = foundUser.map((user) => {
+				delete user.pass;
+				return user;
+			});
+		}
+		if (filteredUsers.length) {
+			res.status(200).json(filteredUsers);
 		} else {
 			res.status(404).json("User not found");
 		}
-	} catch (e) {
+	} catch (error) {
+		console.log(error);
+
 		res.status(500).json(error);
 	}
 });
-server.put("/v1/users/active", validateToken, async (req, res) => {
+server.put("/v1/users", validateToken, async (req, res) => {
 	const token = req.tokenInfo;
 	const username = token.user;
 	try {
@@ -223,7 +225,7 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-server.delete("/v1/users/active", validateToken, async (req, res) => {
+server.delete("/v1/users", validateToken, async (req, res) => {
 	const token = req.tokenInfo;
 	const userId = token.id;
 	try {
