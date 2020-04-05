@@ -28,9 +28,7 @@ server.listen("3000", () => {
 
 // PRODUCTS
 server.get("/v1/products", validateToken, async (req, res) => {
-	const products = await sequelize.query("SELECT * FROM products WHERE disabled = FALSE", {
-		type: QueryTypes.SELECT,
-	});
+	const products = await getByParam("products", "disabled", false, true);
 	res.status(200).json(products);
 });
 server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
@@ -100,20 +98,7 @@ server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
 });
 
 // USERS
-server.get("/v1/users", validateToken, isAdmin, async (req, res) => {
-	try {
-		const users = await sequelize.query("SELECT * FROM users", {
-			type: QueryTypes.SELECT,
-		});
-		const filteredUsers = users.map((user) => {
-			delete user.pass;
-			return user;
-		});
-		res.status(200).json(filteredUsers);
-	} catch (error) {
-		res.status(500).send("An error has ocurred");
-	}
-});
+
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
 	try {
@@ -127,7 +112,7 @@ server.post("/v1/users", async (req, res) => {
 			res.status(409).json("Email already exists, please pick another");
 			return;
 		}
-		if ((username && password && email && deliveryAddress, fullName, phone)) {
+		if (username && password && email && deliveryAddress && fullName && phone) {
 			const insert = await sequelize.query(
 				"INSERT INTO users (user, pass, full_name, mail, phone, delivery_address) VALUES (:username, :password, :fullName, :email, :phone, :deliveryAddress)",
 				{ replacements: { username, password, fullName, email, phone, deliveryAddress } }
@@ -161,24 +146,36 @@ server.get("/v1/users/login", async (req, res) => {
 		res.status(500).json(error);
 	}
 });
-server.get("/v1/users/active", validateToken, async (req, res) => {
-	const token = req.tokenInfo;
-	const userId = token.id;
+server.get("/v1/users", validateToken, async (req, res) => {
+	const userId = req.tokenInfo.id;
+	const isAdmin = req.tokenInfo.isAdmin;
 	try {
-		const foundUser = await getByParam("users", "user_id", userId);
-		if (foundUser) {
-			const { user, fullName, mail, phone, deliveryAddress } = foundUser;
-			const userData = { user, fullName, mail, phone, deliveryAddress };
-			res.status(200).json(userData);
+		let filteredUsers = [];
+		if (isAdmin) {
+			const foundUsers = await getByParam("users", true, true, true);
+			filteredUsers = foundUsers.map((user) => {
+				delete user.pass;
+				return user;
+			});
+		} else {
+			const foundUser = await getByParam("users", "user_id", userId, true);
+			filteredUsers = foundUser.map((user) => {
+				delete user.pass;
+				return user;
+			});
+		}
+		if (filteredUsers.length) {
+			res.status(200).json(filteredUsers);
 		} else {
 			res.status(404).json("User not found");
 		}
-	} catch (e) {
+	} catch (error) {
+		console.log(error);
+
 		res.status(500).json(error);
 	}
 });
-// Chequear que no exista otro usuario con esos datos (validar si el active user/id no matchea con otro más)
-server.put("/v1/users/active", validateToken, async (req, res) => {
+server.put("/v1/users", validateToken, async (req, res) => {
 	const token = req.tokenInfo;
 	const username = token.user;
 	try {
@@ -186,19 +183,23 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 		const userId = foundUser.user_id;
 		if (foundUser) {
 			const { user, fullName, mail, phone, deliveryAddress } = req.body;
-			// Validate if requested name & email already exist for any other user than this one
+
+			// Validates if requested name & email already exist for any other user than this one
 			const existingUsername = await getByParam("users", "user", user);
 			const existingEmail = await getByParam("users", "mail", mail);
-			if (existingUsername) {
-				res.status(409).json("Username already exists, please pick another");
+
+			if (compareSameUserId(req.tokenInfo.id, existingUsername.user_id)) {
+				res.status(409).json("User already exists, please pick another");
 				return;
 			}
-			if (existingEmail) {
+			if (compareSameUserId(req.tokenInfo.id, existingEmail.user_id)) {
 				res.status(409).json("Email already exists, please pick another");
 				return;
 			}
+
 			// Filters "", null or undefined props and puts remaining into new object
 			const filteredProps = filterEmptyProps({ user, fullName, mail, phone, deliveryAddress });
+
 			// Creates new object applying only the filtered Props over the previous ones
 			const updatedUser = { ...foundUser, ...filteredProps };
 			const update = await sequelize.query(
@@ -219,10 +220,12 @@ server.put("/v1/users/active", validateToken, async (req, res) => {
 			res.status(404).json("User not found");
 		}
 	} catch (error) {
+		console.log(error);
+
 		res.status(500).json(error);
 	}
 });
-server.delete("/v1/users/active", validateToken, async (req, res) => {
+server.delete("/v1/users", validateToken, async (req, res) => {
 	const token = req.tokenInfo;
 	const userId = token.id;
 	try {
@@ -254,42 +257,53 @@ server.put("/v1/users/:username", validateToken, isAdmin, async (req, res) => {
 	try {
 		const foundUser = await getByParam("users", "user", username);
 		const userId = foundUser.user_id;
-		if (foundUser) {
-			const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
-			const existingUsername = await getByParam("users", "user", user);
-			const existingEmail = await getByParam("users", "mail", mail);
-			if (existingUsername) {
-				res.status(409).json("Username already exists, please pick another");
-				return;
-			}
-			if (existingEmail) {
-				res.status(409).json("Email already exists, please pick another");
-				return;
-			}
-			// Filters "", null or undefined props and puts remaining into new object
-			const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress, disabled });
-			// Creates new object applying only the filtered Props over the previous ones
-			const updatedUser = { ...foundUser, ...filteredProps };
-			const update = await sequelize.query(
-				`UPDATE users SET user = :user, pass = :pass, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress, disabled = :disabled WHERE user_id = :userId`,
-				{
-					replacements: {
-						user: updatedUser.user,
-						pass: updatedUser.pass,
-						fullName: updatedUser.fullName,
-						mail: updatedUser.mail,
-						phone: updatedUser.phone,
-						deliveryAddress: updatedUser.deliveryAddress,
-						userId: userId,
-						disabled: updatedUser.disabled,
-					},
-				}
-			);
-			res.status(200).send(`User ${username} was modified correctly`);
-		} else {
+		if (!foundUser) {
 			res.status(404).json("User not found");
+			return;
 		}
+		const { user, pass, fullName, mail, phone, deliveryAddress, disabled } = req.body;
+		// Finds all usernames/mails that match the param provided
+		const existingUsername = await getByParam("users", "user", user, true);
+		const existingEmail = await getByParam("users", "mail", mail, true);
+
+		// Finds if any of the previously found IDs match the user-to-modify ID or if they belong to a different user
+		const repeatedUsername =
+			existingUsername && existingUsername.map((user) => compareSameUserId(userId, user.user_id));
+		const repeatedEmail = existingEmail && existingEmail.map((user) => compareSameUserId(userId, user.user_id));
+
+		// If said values don't match ID -> the user/email is taken by another user and can't be changed to that
+		if (repeatedUsername && repeatedUsername.some((value) => value === true)) {
+			res.status(409).json("Username already exists, please pick another");
+			return;
+		}
+		if (repeatedEmail && repeatedEmail.some((value) => value === true)) {
+			res.status(409).json("Email already exists, please pick another");
+			return;
+		}
+
+		// Filters "", null or undefined props and puts remaining into new object
+		const filteredProps = filterEmptyProps({ user, pass, fullName, mail, phone, deliveryAddress, disabled });
+		// Creates new object applying only the filtered Props over the previous ones
+		const updatedUser = { ...foundUser, ...filteredProps };
+		const update = await sequelize.query(
+			`UPDATE users SET user = :user, pass = :pass, full_name = :fullName, mail = :mail, phone = :phone, delivery_address = :deliveryAddress, disabled = :disabled WHERE user_id = :userId`,
+			{
+				replacements: {
+					user: updatedUser.user,
+					pass: updatedUser.pass,
+					fullName: updatedUser.fullName,
+					mail: updatedUser.mail,
+					phone: updatedUser.phone,
+					deliveryAddress: updatedUser.deliveryAddress,
+					userId: userId,
+					disabled: updatedUser.disabled,
+				},
+			}
+		);
+		res.status(200).send(`User ${username} was modified correctly`);
 	} catch (error) {
+		console.log(error);
+
 		res.status(500).json(error);
 	}
 });
@@ -298,16 +312,16 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 	try {
 		const foundUser = await getByParam("users", "user", username);
 		const userId = foundUser.user_id;
-		if (foundUser) {
-			const update = await sequelize.query("UPDATE users SET disabled = true WHERE user_id = :userId", {
-				replacements: {
-					userId: userId,
-				},
-			});
-			res.status(200).send(`User ${username} was disabled correctly`);
-		} else {
+		if (!foundUser) {
 			res.status(404).json("User not found");
+			return;
 		}
+		const update = await sequelize.query("UPDATE users SET disabled = true WHERE user_id = :userId", {
+			replacements: {
+				userId: userId,
+			},
+		});
+		res.status(200).send(`User ${username} was disabled correctly`);
 	} catch (error) {
 		res.status(500).json(error);
 	}
@@ -335,6 +349,7 @@ server.get("/v1/orders", validateToken, async (req, res) => {
 				}
 			);
 		}
+
 		// Adds the product list  details to each order
 		const detailedOrders = await Promise.all(
 			orders.map(async (order) => {
@@ -349,6 +364,7 @@ server.get("/v1/orders", validateToken, async (req, res) => {
 				return order;
 			})
 		);
+
 		if (!!detailedOrders.length) {
 			const filteredOrders = orders.map((user) => {
 				delete user.pass;
@@ -372,8 +388,9 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 		const getOrderDetails = await Promise.all(
 			data.map((product) => getByParam("products", "product_id", product.productId))
 		);
+
 		if (getOrderDetails.some((product) => product.disabled)) {
-			res.status(403).json("Some of the products selected is disabled or no longer available");
+			res.status(403).json("Some of the products selected are disabled or no longer available");
 		} else if (getOrderDetails.every((product) => !!product === true)) {
 			const orderData = async () => {
 				let total = 0;
@@ -385,17 +402,21 @@ server.post("/v1/orders", validateToken, async (req, res) => {
 				description = description.substring(0, description.length - 2);
 				return [total, description];
 			};
+
 			const [total, description] = await orderData();
+
 			const order = await sequelize.query(
 				"INSERT INTO orders (status, date, description, payment_method, total, user_id) VALUES (:status, :date, :description, :paymentMethod, :total, :userId)",
 				{ replacements: { status: "new", date: new Date(), description, paymentMethod, total, userId } }
 			);
+
 			data.forEach(async (product) => {
 				const order_products = await sequelize.query(
 					"INSERT INTO orders_products (order_id, product_id, product_amount) VALUES (:orderID, :productID, :productAmount)",
 					{ replacements: { orderID: order[0], productID: product.productId, productAmount: product.amount } }
 				);
 			});
+
 			console.log(`Order ${order[0]} was created`);
 			res.status(200).json("Order created successfully");
 		} else {
@@ -445,6 +466,7 @@ server.put("/v1/orders/:id", validateToken, isAdmin, async (req, res) => {
 			replacements: { id: id },
 			type: QueryTypes.SELECT,
 		});
+
 		if (!!order.length) {
 			if (utils.validOrderStatus.includes(orderStatus)) {
 				const update = await sequelize.query("UPDATE orders SET status = :status WHERE order_id = :id", {
@@ -473,8 +495,6 @@ server.get("/v1/validate-token", validateToken, async (req, res) => {
 });
 
 // Functions & Middlewares
-// TODO modificar dónde se envía/recibe token
-// Modificar en endpoints de postman también
 function generateToken(info) {
 	return jwt.sign(info, signature, { expiresIn: "1h" });
 }
@@ -501,15 +521,21 @@ function filterEmptyProps(inputObject) {
 	Object.keys(inputObject).forEach((key) => !inputObject[key] && delete inputObject[key]);
 	return inputObject;
 }
-async function getByParam(table = "", tableParam = "", inputParam = "") {
-	const searchResult = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
+async function getByParam(table, tableParam = "TRUE", inputParam = "TRUE", all = false) {
+	const searchResults = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
 		replacements: { replacementParam: inputParam },
 		type: QueryTypes.SELECT,
 	});
-	return !!searchResult.length ? searchResult[0] : false;
+	return !!searchResults.length ? (all ? searchResults : searchResults[0]) : false;
 }
-function getOrderDetails(orderId) {
-	return true;
+function compareSameUserId(baseUserId, foundUserId) {
+	if (foundUserId && baseUserId !== foundUserId) {
+		console.log("Base User ID:", baseUserId, "Found User ID:", foundUserId);
+		console.log("Different user, same data");
+		return true;
+	} else {
+		return false;
+	}
 }
 
 // Generic error detection
