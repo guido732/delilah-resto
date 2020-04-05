@@ -1,0 +1,739 @@
+openapi: 3.0.1
+info:
+  title: Delilah Resto
+  description: Food store backend API.
+  contact:
+    email: guido732@gmail.com
+  version: 1.0.0
+externalDocs:
+  description: Github Repository
+  url: https://github.com/guido732/delilah-resto
+servers:
+  - url: https://localhost:3000/v1
+  - url: http://localhost:3000/v1
+tags:
+  - name: User
+    description: Operations about user
+  - name: Products
+    description: Everything about products
+  - name: Orders
+    description: Everything about orders
+
+paths:
+  /users:
+    post:
+      tags:
+        - User
+      summary: Create user
+      description: Creates a new User in the DataBase
+      operationId: createUser
+      requestBody:
+        description: Created user object
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+        required: true
+      security: []
+      responses:
+        200:
+          description: User correctly added to database
+        400:
+          description: Error validating input data
+        409:
+          description: Username already exists, please pick another
+        default:
+          $ref: "#/components/responses/Default"
+
+    get:
+      tags:
+        - User
+      summary: Gets list of users(Only Admin) or User account details (Not Admin)
+      description: Gets a list of all the existing users in the DataBase if the user
+        sending the request is an admin, otherwise the response only targets the active
+        user.
+      operationId: getUserInfo
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfo"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    put:
+      tags:
+        - User
+      summary: Edits active user data
+      operationId: editActiveUserData
+      requestBody:
+        description: Fields to change
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/User"
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid username/password supplied
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+        409:
+          description: Username or email already registered
+        default:
+          $ref: "#/components/responses/Default"
+
+    delete:
+      tags:
+        - User
+      summary: Disables user account (validation via token)
+      operationId: deleteActiveUser
+      responses:
+        200:
+          description: User account disabled
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Default"
+
+  /users/login:
+    get:
+      tags:
+        - User
+      security: []
+      summary: Logs user into the system
+      operationId: loginUser
+      parameters:
+        - name: username or email
+          in: query
+          description: The user name or email for login
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          description: The password for login in clear text
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        400:
+          description: Invalid username/password supplied
+        401:
+          $ref: "#/components/responses/Disabled"
+        default:
+          $ref: "#/components/responses/Default"
+
+  /users/:username:
+    get:
+      tags:
+        - User
+      summary: Get user by user name (only Admin)
+      operationId: getUserByName
+      parameters:
+        - name: username
+          in: path
+          description: The name that needs to be fetched.
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfo"
+        401:
+          $ref: "#/components/responses/UnauthorizedAdmin"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    put:
+      tags:
+        - User
+      summary: Edit by username (only Admin)
+      description: Edits a username fetched by its username (Admin Only)
+      operationId: updateUserAdmin
+      parameters:
+        - name: username
+          in: path
+          description: name that need to be updated
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Updated user object
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+        required: true
+      responses:
+        200:
+          description: "User {username} was modified correctly"
+        401:
+          $ref: "#/components/responses/UnauthorizedAdmin"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    delete:
+      tags:
+        - User
+      summary: Delete(invalidate) user (only Admin)
+      description: This can only be done by a logged in admin.
+      operationId: deleteUserAdmin
+      parameters:
+        - name: username
+          in: path
+          description: The name that needs to be deleted
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: "User {username} was disabled correctly"
+        401:
+          $ref: "#/components/responses/UnauthorizedAdmin"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+  /products:
+    get:
+      tags:
+        - Products
+      summary: Get list of all available products
+      description: Returns a list of products (does NOT list disabled products)
+      operationId: getProducts
+      parameters:
+        - name: search
+          in: query
+          description: Keywords to search for
+          schema:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Products"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    post:
+      tags:
+        - Products
+      summary: Adds a product
+      description: Adds a product to database
+      operationId: addProduct
+      requestBody:
+        description: Keywords to search for
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Product"
+        required: true
+      responses:
+        200:
+          description: Product added succesfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  example: -2
+        400:
+          description: Error validating input data
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Default"
+
+  /products/:id:
+    get:
+      tags:
+        - Products
+      summary: Gets product by Id
+      description: Returns a specific product detail, fetched by it's ID
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the product that needs to be fetched.
+          required: true
+          schema:
+            type: string
+      operationId: getProductById
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        400:
+          description: Error validating input data
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    put:
+      tags:
+        - Products
+      summary: Edits product by Id
+      description: Edits a specific product fetching it by it's ID
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the product that needs to be fetched.
+          required: true
+          schema:
+            type: string
+      operationId: editProduct
+      requestBody:
+        description: Modification data
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Product"
+        required: true
+      responses:
+        200:
+          description: "Product with id {productId} modified correctly"
+        400:
+          description: Error validating input data
+        401:
+          $ref: "#/components/responses/UnauthorizedAdmin"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    delete:
+      tags:
+        - Products
+      summary: Disables product by Id
+      description: Disables a specific product, fetched by it's ID
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the product that needs to be fetched.
+          required: true
+          schema:
+            type: string
+      operationId: deleteProduct
+      responses:
+        200:
+          description: "Product with id ${productId} was disabled correctly"
+        401:
+          $ref: "#/components/responses/UnauthorizedAdmin"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: Get list of orders
+      description: Returns a list of products
+      operationId: getOrders
+      # parameters:
+      #   - name: limit
+      #     in: query
+      #     description: Limit of entries to return
+      #     schema:
+      #       type: string
+      #   - name: offset
+      #     in: query
+      #     description: Offset from return list (0 based)
+      #     schema:
+      #       type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orders"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    post:
+      tags:
+        - Orders
+      summary: Adds a product
+      description: Adds a product to database
+      operationId: addOrder
+      requestBody:
+        description: Order to create
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewOrder"
+        required: true
+      responses:
+        200:
+          description: Order modified succesfully
+        400:
+          description: Error validating input data
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/Default"
+
+  /orders/:id:
+    get:
+      tags:
+        - Orders
+      summary: Gets product by Id
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the order that needs to be fetched.
+          required: true
+          schema:
+            type: string
+      description: Returns a specific product detail, fetched by it's ID
+      operationId: getOrderById
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Orders"
+        401:
+          $ref: "#/components/responses/UnauthorizedAdmin"
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+    put:
+      tags:
+        - Orders
+      summary: Gets product by Id
+      description: Edits a specific product
+      operationId: editOrder
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the order that needs to be fetched.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Order to create
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                orderStatus:
+                  type: string
+                  example: delivered
+        required: true
+      responses:
+        200:
+          description: "Product with id {productId} modified correctly"
+        400:
+          description: Error validating input data
+        401:
+          $ref: "#/components/responses/UnauthorizedAdmin"
+        403:
+          description: The state given for the product is not valid
+        404:
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Default"
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 100
+        user:
+          type: string
+          example: ghee_dough
+        pass:
+          type: string
+          example: MySecretPass123
+        mail:
+          type: string
+          example: gheedough@gmail.com
+        delivery_address:
+          type: string
+          example: Fake St. 123
+        full_name:
+          type: string
+          example: Guido Torres
+        phone:
+          type: integer
+          example: 5491122223333
+    UserInfo:
+      type: array
+      items:
+        type: object
+        properties:
+          user_id:
+            type: integer
+            example: 1
+          user:
+            type: string
+            example: ghee_dough
+          full_name:
+            type: string
+            example: Guido Torres
+          mail:
+            type: string
+            example: gheedough@gmail.com
+          phone:
+            type: integer
+            example: 5491122223333
+          delivery_address:
+            type: string
+            example: Fake St. 123
+          is_admin:
+            type: boolean
+            example: 0
+          disabled:
+            type: boolean
+            example: 0
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Avocado Toast
+        price:
+          type: number
+          example: 268.5
+        imgUrl:
+          type: string
+          example: https://via.placeholder.com/150
+        description:
+          type: string
+          example: A thick, crusty, toastd rye bread toast with an avocado mix on
+            top with spices
+        disabled:
+          type: boolean
+          example: 0
+    Products:
+      type: array
+      items:
+        $ref: "#/components/schemas/Product"
+    OrderProduct:
+      type: object
+      properties:
+        order_prod_id:
+          type: integer
+          example: 104
+        order_id:
+          type: integer
+          example: 5
+        product_id:
+          type: integer
+          example: 70
+        product_amount:
+          type: integer
+          example: 70
+        name:
+          type: string
+          example: Avocado Toast
+        price:
+          type: number
+          example: 268.5
+        imgUrl:
+          type: string
+          example: https://via.placeholder.com/150
+        description:
+          type: string
+          example: A thick, crusty, toastd rye bread toast with an avocado mix on
+            top with spices
+        disabled:
+          type: boolean
+          example: 0
+    OrderProducts:
+      type: array
+      items:
+        $ref: "#/components/schemas/OrderProduct"
+    Order:
+      type: object
+      properties:
+        order_id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          example: new
+        date:
+          type: string
+          format: date-time
+          example: "2020-04-10T10:11:12Z"
+        description:
+          type: string
+          example: "1x AvoToast"
+        payment_method:
+          type: string
+          example: cash
+        total:
+          type: integer
+          example: 666
+        user_id:
+          type: integer
+          example: 1
+        user:
+          type: string
+          example: gheedough
+        full_name:
+          type: string
+          example: "Guido Torres"
+        mail:
+          type: string
+          example: gheedough@gmail.com
+        phone:
+          type: integer
+          example: 1122223333
+        delivery_address:
+          type: string
+          example: Calle Falsa 123
+        products:
+          $ref: "#/components/schemas/OrderProducts"
+    Orders:
+      type: array
+      items:
+        $ref: "#/components/schemas/Order"
+    NewOrder:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          example: cash
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: integer
+                example: 1
+              amount:
+                type: integer
+                example: 3
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "An error has ocurred: <error>"
+      required:
+        - error
+    Send:
+      type: string
+      example: "Error message"
+
+  securitySchemes:
+    Bearer:
+      type: apiKey
+      name: Authorization
+      in: header
+
+  # Reused Responses
+  responses:
+    UnauthorizedError:
+      description: Invalid Token
+    Disabled:
+      description: Invalid request, user account is disabled
+    NotAdmin:
+      description: Operation forbidden, not an admin
+    NotFound:
+      description: The specified resource was not found
+    Default:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/Send"
+          examples:
+            Token Invalidation:
+              summary: Unauthorized - Invalid Token
+              value: Unauthorized - Invalid Token
+            Disabled Account:
+              summary: Unauthorized - Account is Disabled
+              value: Unauthorized - User account is disabled
+    UnauthorizedAdmin:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/Send"
+          examples:
+            Token Invalidation:
+              summary: Unauthorized - Invalid Token
+              value: Unauthorized - Invalid Token
+            Disabled Account:
+              summary: Unauthorized - Account is Disabled
+              value: Unauthorized - User account is disabled
+            Not Admin:
+              summary: Unauthorized - Not an admin
+              value: Unauthorized - Not an admin
+
+security:
+  - bearerAuth: []

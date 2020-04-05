@@ -26,114 +26,36 @@ tags:
 
 schemes:
   - https
-  # - http
+  - http
+
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: Authorization
+    in: header
 
 paths:
   /users:
     get:
       tags:
         - User
-      summary: Gets a list of all users (only admin)
-      description: Gets list of all existing users in the DataBase
+      summary: Gets list of users(Only Admin) or User account details (Not Admin)
+      description: Gets a list of all the existing users in the DataBase if the user sending the request is an admin, otherwise the response only targets the active user.
       operationId: getAllUsers
       produces:
         # - application/xml
         - application/json
-      parameters:
-        - in: body
-          name: body
-          description: Active user Token
-          required: true
-          schema:
-            $ref: "#/definitions/Token"
-      responses:
-        "200":
-          description: successful operation
-        "400":
-          description: Validation exception
-      security:
-        - petstore_auth:
-            - "write:pets"
-            - "read:pets"
-    post:
-      tags:
-        - User
-      summary: Create user
-      description: Creates a new User in the DataBase
-      operationId: createUser
-      produces:
-        # - application/xml
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: Created user object
-          required: true
-          schema:
-            $ref: "#/definitions/User"
-      responses:
-        "200":
-          description: successful operation
-        "400":
-          description: Validation exception
-        "409":
-          description: Username or email already registered
-      security:
-        - petstore_auth:
-            - "write:pets"
-            - "read:pets"
-  /users/login:
-    get:
-      tags:
-        - User
-      summary: Logs user into the system
-      operationId: loginUser
-      produces:
-        - application/json
-      parameters:
-        - name: username or email
-          in: query
-          description: The user name or email for login
-          required: true
-          type: string
-        - name: password
-          in: query
-          description: The password for login in clear text
-          required: true
-          type: string
-      responses:
-        "200":
-          description: Successful operation
-          schema:
-            $ref: "#/definitions/Token"
-        "400":
-          description: Invalid username/password supplied
-        "401":
-          description: Invalid Token
-  /users/active:
-    get:
-      tags:
-        - User
-      summary: Gets data from active user via token validation
-      operationId: getActiveUserData
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: Active user Token
-          required: true
-          schema:
-            $ref: "#/definitions/Token"
       responses:
         "200":
           description: Successful operation
           schema:
             $ref: "#/definitions/UserInfo"
         "400":
-          description: Invalid username/password supplied
+          description: Validation exception
         "401":
           description: Invalid Token
+      security:
+        - Bearer: []
     put:
       tags:
         - User
@@ -179,6 +101,57 @@ paths:
       responses:
         "200":
           description: Successful operation
+        "401":
+          description: Invalid Token
+    post:
+      tags:
+        - User
+      summary: Create user
+      description: Creates a new User in the DataBase
+      operationId: createUser
+      produces:
+        # - application/xml
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Created user object
+          required: true
+          schema:
+            $ref: "#/definitions/User"
+      responses:
+        "200":
+          description: successful operation
+        "400":
+          description: Validation exception
+        "409":
+          description: Username or email already registered
+  /users/login:
+    get:
+      tags:
+        - User
+      summary: Logs user into the system
+      operationId: loginUser
+      produces:
+        - application/json
+      parameters:
+        - name: username or email
+          in: query
+          description: The user name or email for login
+          required: true
+          type: string
+        - name: password
+          in: query
+          description: The password for login in clear text
+          required: true
+          type: string
+      responses:
+        "200":
+          description: Successful operation
+          schema:
+            $ref: "#/definitions/Token"
+        "400":
+          description: Invalid username/password supplied
         "401":
           description: Invalid Token
   "/users/:username":
@@ -473,19 +446,6 @@ paths:
         "200":
           description: successful operation
 
-securityDefinitions:
-  petstore_auth:
-    type: oauth2
-    authorizationUrl: "http://petstore.swagger.io/oauth/dialog"
-    flow: implicit
-    scopes:
-      "write:pets": modify pets in your account
-      "read:pets": read your pets
-  api_key:
-    type: apiKey
-    name: api_key
-    in: header
-
 definitions:
   User:
     type: object
@@ -558,7 +518,7 @@ definitions:
       id:
         type: integer
         example: 1
-      client:
+      userID:
         type: integer
         example: 1
       data:
