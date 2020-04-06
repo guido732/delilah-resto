@@ -1,3 +1,6 @@
+# Project specific rules
+resources
+
 # Logs
 logs
 *.log
