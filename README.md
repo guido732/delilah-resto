@@ -59,8 +59,6 @@ Testear los endpoints provistos desde postman para poder hacer uso de la API y b
 
 (Asegurarse de seleccionar el entorno de desarrollo `Delilah Restó` para poder acceder a las variables globales)
 
----
-
 Project #3 from the Full Stack Web Development career in Acámica.
 
 ## Resources and technologies used:
