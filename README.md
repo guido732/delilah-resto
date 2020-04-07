@@ -55,7 +55,9 @@ Abrir el archivo en `/server/server.js` desde node
 
 Testear los endpoints provistos desde postman para poder hacer uso de la API y base de datos generadas
 
----
+[Colección de Postman](https://documenter.getpostman.com/view/10237996/SzYdSbvb)
+
+(Asegurarse de seleccionar el entorno de desarrollo `Delilah Restó` para poder acceder a las variables globales)
 
 Project #3 from the Full Stack Web Development career in Acámica.
 
@@ -111,3 +113,7 @@ From your node terminal open the file located in `/server/server.js`
 ### 5 - It's ready to use!
 
 You can now test the provided endpoints from the Postman collection to make use of the API and database connection
+
+[Postman collection](https://documenter.getpostman.com/view/10237996/SzYdSbvb)
+
+(Make sure the `Delilah Restó` enviroment is selected so you can access the enviroment variables)
