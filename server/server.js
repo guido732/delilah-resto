@@ -26,81 +26,6 @@ server.listen("3000", () => {
 	console.log(`Delilah Resto - Server Started ${date}`);
 });
 
-// PRODUCTS
-server.get("/v1/products", validateToken, async (req, res) => {
-	const products = await getByParam("products", "disabled", false, true);
-	res.status(200).json(products);
-});
-server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
-	const { name, price, imgUrl, description } = req.body;
-	try {
-		if (name && price && imgUrl && description) {
-			const insert = await sequelize.query(
-				"INSERT INTO products (name, price, img_url, description) VALUES (:name, :price, :imgUrl, :description)",
-				{ replacements: { name, price, imgUrl, description } }
-			);
-			console.log("Product Added to database", insert);
-			res.status(200).json(insert);
-		} else {
-			res.status(400).send("Error validating input data");
-		}
-	} catch (error) {
-		res.status(500).json("An error has ocurred:", error);
-	}
-});
-server.get("/v1/products/:id", validateToken, async (req, res) => {
-	const productId = req.params.id;
-	const productFound = await getByParam("products", "product_id", productId);
-	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
-});
-server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
-	const productId = req.params.id;
-	try {
-		const productFound = await getByParam("products", "product_id", productId);
-		if (productFound) {
-			const { name, price, imgUrl, description, disabled } = req.body;
-			// Filters "", null or undefined props and puts remaining into new object
-			const filteredProps = filterEmptyProps({ name, price, imgUrl, description, disabled });
-			// Creates new object applying only the filtered Props over the previous ones
-			const updatedProduct = { ...productFound, ...filteredProps };
-			const update = await sequelize.query(
-				"UPDATE products SET name = :name, price = :price, img_url = :imgUrl, description = :description, disabled = :disabled WHERE product_id = :id",
-				{
-					replacements: {
-						id: productId,
-						name: updatedProduct.name,
-						price: updatedProduct.price,
-						imgUrl: updatedProduct.img_url,
-						description: updatedProduct.description,
-						disabled: updatedProduct.disabled,
-					},
-				}
-			);
-			res.status(200).send(`Product with id ${productId} modified correctly`);
-		} else {
-			res.status(404).send("No product matches the ID provided");
-		}
-	} catch (error) {
-		res.status(500).json("An error has ocurred:", error);
-	}
-});
-server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
-	const productId = req.params.id;
-	try {
-		const productFound = await getByParam("products", "product_id", productId);
-		if (productFound) {
-			const update = await sequelize.query("UPDATE products SET disabled = true WHERE product_id = :id", {
-				replacements: {
-					id: productId,
-				},
-			});
-			res.status(200).send(`Product with id ${productId} was disabled correctly`);
-		}
-	} catch (error) {
-		res.status(404).send("No product matches the ID provided");
-	}
-});
-
 // USERS
 server.post("/v1/users", async (req, res) => {
 	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
@@ -118,6 +43,32 @@ server.post("/v1/users", async (req, res) => {
 		if (username && password && email && deliveryAddress && fullName && phone) {
 			const insert = await sequelize.query(
 				"INSERT INTO users (user, pass, full_name, mail, phone, delivery_address) VALUES (:username, :password, :fullName, :email, :phone, :deliveryAddress)",
+				{ replacements: { username, password, fullName, email, phone, deliveryAddress } }
+			);
+			res.status(200).json("User correctly added to database");
+		} else {
+			res.status(400).send("Error validating input data");
+		}
+	} catch (error) {
+		res.status(500).json("An error has ocurred:", error);
+	}
+});
+server.post("/v1/admin", async (req, res) => {
+	const { username, password, email, deliveryAddress, fullName, phone } = req.body;
+	try {
+		const existingUsername = await getByParam("users", "user", username);
+		const existingEmail = await getByParam("users", "mail", email);
+		if (existingUsername) {
+			res.status(409).json("Username already exists, please pick another");
+			return;
+		}
+		if (existingEmail) {
+			res.status(409).json("Email already exists, please pick another");
+			return;
+		}
+		if (username && password && email && deliveryAddress && fullName && phone) {
+			const insert = await sequelize.query(
+				"INSERT INTO users (user, pass, full_name, mail, phone, delivery_address, is_admin) VALUES (:username, :password, :fullName, :email, :phone, :deliveryAddress, TRUE)",
 				{ replacements: { username, password, fullName, email, phone, deliveryAddress } }
 			);
 			res.status(200).json("User correctly added to database");
@@ -331,6 +282,81 @@ server.delete("/v1/users/:username", validateToken, isAdmin, async (req, res) =>
 		res.status(200).send(`User ${username} was disabled correctly`);
 	} catch (error) {
 		res.status(500).json("An error has ocurred:", error);
+	}
+});
+
+// PRODUCTS
+server.get("/v1/products", validateToken, async (req, res) => {
+	const products = await getByParam("products", "disabled", false, true);
+	res.status(200).json(products);
+});
+server.post("/v1/products", validateToken, isAdmin, async (req, res) => {
+	const { name, price, imgUrl, description } = req.body;
+	try {
+		if (name && price && imgUrl && description) {
+			const insert = await sequelize.query(
+				"INSERT INTO products (name, price, img_url, description) VALUES (:name, :price, :imgUrl, :description)",
+				{ replacements: { name, price, imgUrl, description } }
+			);
+			console.log("Product Added to database", insert);
+			res.status(200).json(insert);
+		} else {
+			res.status(400).send("Error validating input data");
+		}
+	} catch (error) {
+		res.status(500).json("An error has ocurred:", error);
+	}
+});
+server.get("/v1/products/:id", validateToken, async (req, res) => {
+	const productId = req.params.id;
+	const productFound = await getByParam("products", "product_id", productId);
+	productFound ? res.status(200).json(productFound) : res.status(404).send("No product matches the ID provided");
+});
+server.put("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
+	const productId = req.params.id;
+	try {
+		const productFound = await getByParam("products", "product_id", productId);
+		if (productFound) {
+			const { name, price, imgUrl, description, disabled } = req.body;
+			// Filters "", null or undefined props and puts remaining into new object
+			const filteredProps = filterEmptyProps({ name, price, imgUrl, description, disabled });
+			// Creates new object applying only the filtered Props over the previous ones
+			const updatedProduct = { ...productFound, ...filteredProps };
+			const update = await sequelize.query(
+				"UPDATE products SET name = :name, price = :price, img_url = :imgUrl, description = :description, disabled = :disabled WHERE product_id = :id",
+				{
+					replacements: {
+						id: productId,
+						name: updatedProduct.name,
+						price: updatedProduct.price,
+						imgUrl: updatedProduct.img_url,
+						description: updatedProduct.description,
+						disabled: updatedProduct.disabled,
+					},
+				}
+			);
+			res.status(200).send(`Product with id ${productId} modified correctly`);
+		} else {
+			res.status(404).send("No product matches the ID provided");
+		}
+	} catch (error) {
+		res.status(500).json("An error has ocurred:", error);
+	}
+});
+server.delete("/v1/products/:id", validateToken, isAdmin, async (req, res) => {
+	const productId = req.params.id;
+	try {
+		const productFound = await getByParam("products", "product_id", productId);
+		if (productFound) {
+			const update = await sequelize.query("UPDATE products SET disabled = true WHERE product_id = :id", {
+				replacements: {
+					id: productId,
+				},
+			});
+			res.status(200).send(`Product with id ${productId} was disabled correctly`);
+		}
+	} catch (error) {
+		res.status(404).send("No product matches the ID provided");
 	}
 });
 
