@@ -171,7 +171,7 @@ paths:
       tags:
         - User
       summary: Edit by username (only Admin)
-      description: Edits a username fetched by its username (Admin Only)
+      description: Edits a username fetched by its username (Admin Only). The full object can be sent or only the parameters needing to be modified.
       operationId: updateUserAdmin
       parameters:
         - name: username
@@ -186,7 +186,6 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/User"
-        required: true
       responses:
         200:
           description: "User {username} was modified correctly"
@@ -250,7 +249,7 @@ paths:
     post:
       tags:
         - Products
-      summary: Adds a product
+      summary: Adds a product (only Admin)
       description: Adds a product to database
       operationId: addProduct
       requestBody:
@@ -310,7 +309,7 @@ paths:
     put:
       tags:
         - Products
-      summary: Edits product by Id
+      summary: Edits product by Id (only Admin)
       description: Edits a specific product fetching it by it's ID
       parameters:
         - name: id
@@ -342,7 +341,7 @@ paths:
     delete:
       tags:
         - Products
-      summary: Disables product by Id
+      summary: Disables product by Id (only Admin)
       description: Disables a specific product, fetched by it's ID
       parameters:
         - name: id
@@ -367,19 +366,8 @@ paths:
       tags:
         - Orders
       summary: Get list of orders
-      description: Returns a list of products
+      description: Returns a list of products. If user is admin returns a list of all orders, if user is not admin returns a list of their orders only.
       operationId: getOrders
-      # parameters:
-      #   - name: limit
-      #     in: query
-      #     description: Limit of entries to return
-      #     schema:
-      #       type: string
-      #   - name: offset
-      #     in: query
-      #     description: Offset from return list (0 based)
-      #     schema:
-      #       type: string
       responses:
         200:
           description: successful operation
@@ -421,7 +409,7 @@ paths:
     get:
       tags:
         - Orders
-      summary: Gets product by Id
+      summary: Gets product by Id (only Admin)
       parameters:
         - name: id
           in: path
@@ -448,7 +436,7 @@ paths:
     put:
       tags:
         - Orders
-      summary: Gets product by Id
+      summary: Gets product by Id (only Admin)
       description: Edits a specific product
       operationId: editOrder
       parameters:
@@ -542,7 +530,7 @@ components:
     Product:
       type: object
       properties:
-        id:
+        product_id:
           type: integer
           example: 1
         name:
@@ -680,12 +668,6 @@ components:
     Send:
       type: string
       example: "Error message"
-
-  # securitySchemes:
-  #   Bearer:
-  #     type: apiKey
-  #     name: Authorization
-  #     in: header
 
   # Reused Responses
   responses:
