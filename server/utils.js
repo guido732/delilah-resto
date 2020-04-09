@@ -1,3 +1,3 @@
-const validOrderStatus = ["new", "confirmed", "preparing", "sending", "delivered", "canceled"];
+const valid_order_status = ["new", "confirmed", "preparing", "sending", "delivered", "canceled"];
 
-module.exports = { validOrderStatus };
+module.exports = { valid_order_status };
