@@ -492,13 +492,13 @@ components:
           type: integer
           format: int64
           example: 100
-        user:
+        username:
           type: string
           example: ghee_dough
-        pass:
+        password:
           type: string
           example: MySecretPass123
-        mail:
+        email:
           type: string
           example: gheedough@gmail.com
         delivery_address:
@@ -518,13 +518,13 @@ components:
           user_id:
             type: integer
             example: 1
-          user:
+          username:
             type: string
             example: ghee_dough
           full_name:
             type: string
             example: Guido Torres
-          mail:
+          email:
             type: string
             example: gheedough@gmail.com
           phone:
@@ -536,7 +536,7 @@ components:
           is_admin:
             type: boolean
             example: 0
-          disabled:
+          is_disabled:
             type: boolean
             example: 0
     Product:
@@ -551,14 +551,14 @@ components:
         price:
           type: number
           example: 268.5
-        imgUrl:
+        img_url:
           type: string
           example: https://via.placeholder.com/150
         description:
           type: string
           example: A thick, crusty, toastd rye bread toast with an avocado mix on
             top with spices
-        disabled:
+        is_disabled:
           type: boolean
           example: 0
     Products:
@@ -586,14 +586,14 @@ components:
         price:
           type: number
           example: 268.5
-        imgUrl:
+        img_url:
           type: string
           example: https://via.placeholder.com/150
         description:
           type: string
           example: A thick, crusty, toastd rye bread toast with an avocado mix on
             top with spices
-        disabled:
+        is_disabled:
           type: boolean
           example: 0
     OrderProducts:
@@ -625,13 +625,13 @@ components:
         user_id:
           type: integer
           example: 1
-        user:
+        username:
           type: string
           example: gheedough
         full_name:
           type: string
           example: "Guido Torres"
-        mail:
+        email:
           type: string
           example: gheedough@gmail.com
         phone:
@@ -649,7 +649,7 @@ components:
     NewOrder:
       type: object
       properties:
-        paymentMethod:
+        payment_method:
           type: string
           example: cash
         data:
@@ -657,7 +657,7 @@ components:
           items:
             type: object
             properties:
-              productId:
+              product_id:
                 type: integer
                 example: 1
               amount:
@@ -681,11 +681,11 @@ components:
       type: string
       example: "Error message"
 
-  securitySchemes:
-    Bearer:
-      type: apiKey
-      name: Authorization
-      in: header
+  # securitySchemes:
+  #   Bearer:
+  #     type: apiKey
+  #     name: Authorization
+  #     in: header
 
   # Reused Responses
   responses:
