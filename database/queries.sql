@@ -1,25 +1,20 @@
+-- Drop Tables
+DROP TABLE orders_products;
+DROP TABLE products;
+DROP TABLE orders;
+DROP TABLE users;
+
 -- Table Creation
 CREATE TABLE users (
   user_id INT PRIMARY KEY AUTO_INCREMENT,
-  user VARCHAR (60) NOT NULL,
-  pass VARCHAR (60) NOT NULL,
+  username VARCHAR (60) NOT NULL,
+  password VARCHAR (60) NOT NULL,
   full_name VARCHAR(60) NOT NULL,
-  mail VARCHAR(60) NOT NULL,
+  email VARCHAR(60) NOT NULL,
   phone INT NOT NULL,
   delivery_address VARCHAR (60) NOT NULL,
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-  disabled BOOLEAN DEFAULT FALSE
-);
-
-CREATE TABLE orders (
-  order_id INT PRIMARY KEY AUTO_INCREMENT,
-  STATUS VARCHAR(60) NOT NULL,
-  date DATETIME NOT NULL,
-  description VARCHAR(150) NOT NULL,
-  payment_method VARCHAR (60) NOT NULL,
-  total FLOAT NOT NULL,
-  user_id INT NOT NULL DEFAULT "0",
-  FOREIGN KEY(user_id) REFERENCES users(user_id)
+  is_disabled BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE products (
@@ -28,7 +23,19 @@ CREATE TABLE products (
   price FLOAT NOT NULL,
   img_url VARCHAR(200) NOT NULL,
   description VARCHAR(150) NOT NULL,
-  disabled BOOLEAN DEFAULT FALSE
+  is_disabled BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE orders (
+  order_id INT PRIMARY KEY AUTO_INCREMENT,
+  status VARCHAR(60) NOT NULL,
+  date DATETIME NOT NULL,
+  description VARCHAR(150) NOT NULL,
+  payment_method VARCHAR (60) NOT NULL,
+  total FLOAT NOT NULL,
+  user_id INT NOT NULL DEFAULT "0",
+  is_disabled BOOLEAN DEFAULT FALSE,
+  FOREIGN KEY(user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE orders_products (
@@ -182,7 +189,8 @@ VALUES
     "1x HambDobPapas, 2x Coca600",
     "card",
     480,
-    1
+    1,
+    FALSE
   ),
   (
     NULL,
@@ -191,7 +199,8 @@ VALUES
     "2x Coca600",
     "card",
     120,
-    3
+    3,
+    FALSE
   ),
   (
     NULL,
@@ -200,7 +209,8 @@ VALUES
     "2x Coca600",
     "cash",
     120,
-    1
+    1,
+    FALSE
   ),
   (
     NULL,
@@ -209,7 +219,8 @@ VALUES
     "1x GdeMuzza",
     "cash",
     400,
-    3
+    3,
+    FALSE
   ),
   (
     NULL,
@@ -218,7 +229,8 @@ VALUES
     "1x GdeJmonAnana",
     "card",
     450,
-    2
+    2,
+    FALSE
   ),
   (
     NULL,
@@ -227,7 +239,8 @@ VALUES
     "1x SgchMilaCaba",
     "cash",
     450,
-    1
+    1,
+    FALSE
   );
 
 -- Populate orders_products table
@@ -242,8 +255,3 @@ VALUES
   (NULL, 5, 6, 1),
   (NULL, 6, 7, 1);
 
--- Drop Tables
--- DROP TABLE orders_products;
--- DROP TABLE products;
--- DROP TABLE orders;
--- DROP TABLE users;
