@@ -668,6 +668,11 @@ components:
     Send:
       type: string
       example: "Error message"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
   # Reused Responses
   responses:
