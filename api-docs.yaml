@@ -668,6 +668,7 @@ components:
     Send:
       type: string
       example: "Error message"
+      
   securitySchemes:
     bearerAuth:
       type: http
