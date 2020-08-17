@@ -12,14 +12,13 @@ require("dotenv").config();
 // Middlewares
 const bp = require("body-parser");
 // DB setup/connection
-const { conf_db_host, conf_db_name, conf_user, conf_password, conf_port } = require("../database/db_connection_data");
 const Sequelize = require("sequelize");
 const { QueryTypes } = require("sequelize");
-const sequelize = new Sequelize(`mysql://${conf_user}:${conf_password}@${conf_db_host}:${conf_port}/${conf_db_name}`);
+const { DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT } = process.env;
+
+const sequelize = new Sequelize(`mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`);
 // Custom Modules
 const utils = require("./utils");
-
-console.log(process.env.JWT_SECRET);
 
 // Server Setup
 server.use(bp.json());
