@@ -7,8 +7,6 @@ const express = require("express");
 const server = express();
 // JWT
 const jwt = require("jsonwebtoken");
-// Middlewares
-const bp = require("body-parser");
 // Custom Modules
 const utils = require("./utils");
 // DB setup/connection
@@ -25,7 +23,7 @@ const port = process.env.PORT || 3000;
 const sequelize = new Sequelize(`mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`);
 
 // Server Setup
-server.use(bp.json());
+server.use(express.json());
 server.listen(port, () => {
 	const date = new Date();
 	console.log(`Delilah Resto - Server Started ${date} on port ${port}`);
