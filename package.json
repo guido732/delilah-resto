@@ -1,6 +1,6 @@
 {
   "name": "delilah-resto",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Proyecto Delilah Restó para la cursada DWFS de Acámica",
   "main": "server.js",
   "scripts": {
