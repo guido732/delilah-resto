@@ -18,9 +18,12 @@ if (process.env.NODE_ENV !== "production") {
 }
 const { DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT } = process.env;
 const port = process.env.PORT || 3000;
-
 // Sequelize Initialization
 const sequelize = new Sequelize(`mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`);
+// Routes
+const userRoutes = require("./routes/user");
+// Route Middlewares
+server.use("/v1/users", userRoutes);
 
 // Server Setup
 server.use(express.json());
