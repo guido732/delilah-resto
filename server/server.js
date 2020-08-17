@@ -6,11 +6,11 @@
 // Express
 const express = require("express");
 const server = express();
-// Middlewares
-const bp = require("body-parser");
 // JWT
 const jwt = require("jsonwebtoken");
-const signature = require("./jwt");
+require("dotenv").config();
+// Middlewares
+const bp = require("body-parser");
 // DB setup/connection
 const { conf_db_host, conf_db_name, conf_user, conf_password, conf_port } = require("../database/db_connection_data");
 const Sequelize = require("sequelize");
@@ -18,6 +18,8 @@ const { QueryTypes } = require("sequelize");
 const sequelize = new Sequelize(`mysql://${conf_user}:${conf_password}@${conf_db_host}:${conf_port}/${conf_db_name}`);
 // Custom Modules
 const utils = require("./utils");
+
+console.log(process.env.JWT_SECRET);
 
 // Server Setup
 server.use(bp.json());
@@ -557,12 +559,12 @@ server.get("/v1/validate-token", validate_token, async (req, res, next) => {
 
 // Functions & Middlewares
 function generate_token(info) {
-	return jwt.sign(info, signature, { expiresIn: "1h" });
+	return jwt.sign(info, JWT_SECRET, { expiresIn: "1h" });
 }
 async function validate_token(req, res, next) {
 	const token = req.headers.authorization.split(" ")[1];
 	try {
-		const verification = jwt.verify(token, signature);
+		const verification = jwt.verify(token, JWT_SECRET);
 		const found_user = await get_by_param("users", "user_id", verification.id);
 		const isDisabled = !!found_user.is_disabled;
 		if (isDisabled) {
