@@ -22,8 +22,12 @@ const port = process.env.PORT || 3000;
 const sequelize = new Sequelize(`mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`);
 // Routes
 const userRoutes = require("./routes/user");
+const productRoutes = require("./routes/product");
+const orderRoutes = require("./routes/order");
 // Route Middlewares
 server.use("/v1/users", userRoutes);
+server.use("/v1/products", productRoutes);
+server.use("/v1/orders", orderRoutes);
 
 // Server Setup
 server.use(express.json());
