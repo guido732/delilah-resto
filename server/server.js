@@ -5,29 +5,22 @@
 // Express
 const express = require("express");
 const server = express();
-// JWT
-const jwt = require("jsonwebtoken");
-// Custom Modules
-const utils = require("./utils");
-// DB setup/connection
-const Sequelize = require("sequelize");
-const { QueryTypes } = require("sequelize");
+
 // Development Environment
 if (process.env.NODE_ENV !== "production") {
 	require("dotenv").config();
 }
-const { DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT } = process.env;
 const port = process.env.PORT || 3000;
-// Sequelize Initialization
-// const sequelize = new Sequelize(`mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`);
+
 // Routes
 const userRoutes = require("./routes/user");
 const adminRoutes = require("./routes/admin");
 const productRoutes = require("./routes/product");
 const orderRoutes = require("./routes/order");
 
-// Server Setup
+// Middleware Setup
 server.use(express.json());
+// Server load
 server.listen(port, () => {
 	const date = new Date();
 	console.log(`Delilah Resto - Server Started ${date} on port ${port}`);
@@ -39,7 +32,7 @@ server.use("/v1/admin", adminRoutes);
 server.use("/v1/products", productRoutes);
 server.use("/v1/orders", orderRoutes);
 
-// PRODUCTS
+/* // PRODUCTS
 server.get("/v1/products", validate_token, async (req, res, next) => {
 	const products = await get_by_param("products", "is_disabled", false, true);
 	res.status(200).json(products);
@@ -292,62 +285,14 @@ server.delete("/v1/orders/:id", validate_token, is_admin, async (req, res, next)
 	} catch (error) {
 		next(new Error(error));
 	}
-});
+}); 
 
 // Test Endpoints
 server.get("/v1/validate-token", validate_token, async (req, res, next) => {
 	res.status(200).json("Valid Token, carry on");
 });
 
-// Functions & Middlewares
-function generate_token(info) {
-	return jwt.sign(info, JWT_SECRET, { expiresIn: "1h" });
-}
-async function validate_token(req, res, next) {
-	const token = req.headers.authorization.split(" ")[1];
-	try {
-		const verification = jwt.verify(token, JWT_SECRET);
-		const found_user = await get_by_param("users", "user_id", verification.id);
-		const isDisabled = !!found_user.is_disabled;
-		if (isDisabled) {
-			res.status(401).json("Unauthorized - User account is disabled");
-		} else {
-			req.token_info = verification;
-			next();
-		}
-	} catch (e) {
-		res.status(401).json("Unauthorized - Invalid Token");
-	}
-}
-function is_admin(req, res, next) {
-	req.token_info.is_admin ? next() : res.status(401).json("Unauthorized - Not an admin");
-}
-function filter_empty_props(inputObject) {
-	Object.keys(inputObject).forEach((key) => !inputObject[key] && delete inputObject[key]);
-	return inputObject;
-}
-async function get_by_param(table, tableParam = "TRUE", inputParam = "TRUE", all = false) {
-	const searchResults = await sequelize.query(`SELECT * FROM ${table} WHERE ${tableParam} = :replacementParam`, {
-		replacements: { replacementParam: inputParam },
-		type: QueryTypes.SELECT,
-	});
-	return !!searchResults.length ? (all ? searchResults : searchResults[0]) : false;
-}
-function compare_same_user_id(baseUserId, found_userId) {
-	if (found_userId && baseUserId !== found_userId) {
-		console.log("Base User ID:", baseUserId, "Found User ID:", found_userId);
-		console.log("Different username, same data");
-		return true;
-	} else {
-		return false;
-	}
-}
-function filter_sensitive_data(userArray, filters) {
-	return userArray.map((user) => {
-		filters.forEach((filter) => delete user[filter]);
-		return user;
-	});
-}
+*/
 
 // Generic error detection
 server.use((err, req, res, next) => {

@@ -1,5 +1,12 @@
 // Services & Utils
 const { get_by_param } = require("../services");
+// JWT
+const jwt = require("jsonwebtoken");
+// env
+if (process.env.NODE_ENV !== "production") {
+	require("dotenv").config();
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 async function validate_token(req, res, next) {
 	const token = req.headers.authorization.split(" ")[1];
