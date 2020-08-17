@@ -2,29 +2,33 @@
 // ####### Delilah Resto - NodeJs Server  #######
 // ##############################################
 
-// Imports
 // Express
 const express = require("express");
 const server = express();
 // JWT
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 // Middlewares
 const bp = require("body-parser");
+// Custom Modules
+const utils = require("./utils");
 // DB setup/connection
 const Sequelize = require("sequelize");
 const { QueryTypes } = require("sequelize");
+// Development Environment
+if (process.env.NODE_ENV !== "production") {
+	require("dotenv").config();
+}
 const { DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT } = process.env;
+const port = process.env.PORT || 3000;
 
+// Sequelize Initialization
 const sequelize = new Sequelize(`mysql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}`);
-// Custom Modules
-const utils = require("./utils");
 
 // Server Setup
 server.use(bp.json());
-server.listen("3000", () => {
+server.listen(port, () => {
 	const date = new Date();
-	console.log(`Delilah Resto - Server Started ${date}`);
+	console.log(`Delilah Resto - Server Started ${date} on port ${port}`);
 });
 
 // USERS
