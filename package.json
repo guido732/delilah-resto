@@ -30,7 +30,7 @@
 	"homepage": "https://github.com/guido732/delilah-resto#readme",
 	"dependencies": {
 		"dotenv": "^8.2.0",
-		"express": "^4.17.1",
+		"express": "^4.17.3",
 		"jsonwebtoken": "^8.5.1",
 		"mysql2": "^2.1.0",
 		"sequelize": "^6.3.4"
